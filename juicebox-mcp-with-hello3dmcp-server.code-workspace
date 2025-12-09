@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "juicebox-mcp",
+			"path": "."
+		},
+		{
+			"name": "hello3dmcp-server",
+			"path": "/Users/turner/MCPDevelopment/hello3dmcp-server"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/node_modules": true
+		}
+	}
+}

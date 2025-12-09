@@ -4,22 +4,8 @@ This document identifies the core "verbs" (actions/functions) that could be expo
 
 ## Browser Management
 
-### Create & Initialize
-- **createBrowser** - Create a new browser instance with configuration
+### Initialize
 - **init** - Initialize the application with container and config
-- **createBrowserList** - Create multiple browser instances from session config
-
-### Selection & Control
-- **getCurrentBrowser** - Get the currently active browser instance
-- **setCurrentBrowser** - Set which browser is currently active/selected
-- **getAllBrowsers** - Get list of all browser instances
-- **deleteBrowser** - Delete/remove a browser instance
-- **deleteAllBrowsers** - Remove all browser instances
-
-### Synchronization
-- **syncBrowsers** - Synchronize multiple browsers to share state
-- **unsyncSelf** - Remove browser from synchronization group
-- **unsync** - Remove specific browser from sync with another
 
 ## Navigation & Locus Control
 
@@ -46,7 +32,6 @@ This document identifies the core "verbs" (actions/functions) that could be expo
 
 ### Main Dataset
 - **loadHicFile** - Load a .hic file as the main dataset
-- **loadLiveMapDataset** - Load a live map dataset (alternative data source)
 
 ### Control Dataset
 - **loadHicControlFile** - Load a control .hic file for comparison
@@ -55,10 +40,6 @@ This document identifies the core "verbs" (actions/functions) that could be expo
 - **loadTracks** - Load one or more tracks (1D or 2D annotations)
 - **removeTrack** - Remove a specific track
 - **removeAllTracks** - Remove all tracks
-
-### Normalization
-- **loadNormalizationFile** - Load normalization vector file (.nv format)
-- **getNormalizationOptions** - Get available normalization methods for current dataset
 
 ## Display Configuration
 
