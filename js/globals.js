@@ -1,0 +1,3 @@
+const Globals = {}
+
+export {Globals}
