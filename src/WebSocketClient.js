@@ -4,11 +4,10 @@
  * Automatically detects if server is not running and polls for availability
  */
 export class WebSocketClient {
-  constructor(onCommand, onStatusChange = null, sessionId = null, onStateQuery = null) {
+  constructor(onCommand, onStatusChange = null, sessionId = null) {
     this.ws = null;
     this.onCommand = onCommand;
     this.onStatusChange = onStatusChange;
-    this.onStateQuery = onStateQuery; // Callback to retrieve state when queried
     this.sessionId = sessionId; // Store session ID for this client
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 10;
@@ -114,12 +113,6 @@ export class WebSocketClient {
           // Handle error messages
           if (data.type === 'error') {
             console.error('WebSocket server error:', data.message);
-            return;
-          }
-          
-          // Handle state query requests
-          if (data.type === 'requestState' && data.requestId) {
-            this._handleStateQuery(data.requestId, data.forceRefresh);
             return;
           }
           
@@ -239,74 +232,6 @@ export class WebSocketClient {
 
   isConnected() {
     return this.ws && this.ws.readyState === WebSocket.OPEN;
-  }
-
-  /**
-   * Handle state query request from server
-   * @param {string} requestId - Unique request ID for correlation
-   * @param {boolean} forceRefresh - Whether to force fresh state retrieval
-   */
-  async _handleStateQuery(requestId, forceRefresh = false) {
-    if (!this.onStateQuery) {
-      // No state query handler, send error
-      this._sendStateError(requestId, 'State query handler not available');
-      return;
-    }
-
-    try {
-      // Call the state query handler to get current state
-      const state = await this.onStateQuery(forceRefresh);
-      
-      // Send state response back to server
-      this._sendStateResponse(requestId, state);
-    } catch (error) {
-      console.error('Error retrieving state:', error);
-      this._sendStateError(requestId, error.message || 'Failed to retrieve state');
-    }
-  }
-
-  /**
-   * Send state response to server
-   * @param {string} requestId - Request ID for correlation
-   * @param {object} state - State object to send
-   */
-  _sendStateResponse(requestId, state) {
-    if (this.isConnected()) {
-      this.ws.send(JSON.stringify({
-        type: 'stateResponse',
-        requestId: requestId,
-        state: state
-      }));
-    }
-  }
-
-  /**
-   * Send state error to server
-   * @param {string} requestId - Request ID for correlation
-   * @param {string} error - Error message
-   */
-  _sendStateError(requestId, error) {
-    if (this.isConnected()) {
-      this.ws.send(JSON.stringify({
-        type: 'stateError',
-        requestId: requestId,
-        error: error
-      }));
-    }
-  }
-
-  /**
-   * Send state update to server (push update)
-   * @param {object} state - State object to send
-   */
-  sendStateUpdate(state) {
-    if (this.isConnected()) {
-      this.ws.send(JSON.stringify({
-        type: 'stateUpdate',
-        state: state,
-        timestamp: Date.now()
-      }));
-    }
   }
 }
 

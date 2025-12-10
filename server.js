@@ -63,16 +63,7 @@ const BROWSER_URL = cliArgs.browserUrl || process.env.BROWSER_URL || 'http://loc
 // Map<sessionId, WebSocket>
 const wsClients = new Map();
 
-// Store pending state queries for request-response correlation
-// Map<requestId, {resolve, reject, timeout}>
-const pendingStateQueries = new Map();
-
-// Store cached state per session
-// Map<sessionId, {state: object, timestamp: number}>
-const sessionStateCache = new Map();
-
-// Default timeout for state queries (2 seconds)
-const STATE_QUERY_TIMEOUT = 2000;
+// State management removed - commands will simply update Juicebox without querying state
 
 // Create WebSocket server for browser communication
 const wss = new WebSocketServer({ port: WS_PORT });
@@ -119,42 +110,8 @@ wss.on('connection', (ws) => {
           sessionId: sessionId
         }));
       } else if (sessionId) {
-        // Handle state response messages
-        if (data.type === 'stateResponse' && data.requestId) {
-          const query = pendingStateQueries.get(data.requestId);
-          if (query) {
-            clearTimeout(query.timeout);
-            pendingStateQueries.delete(data.requestId);
-            query.resolve(data.state);
-          } else {
-            console.warn(`Received state response for unknown requestId: ${data.requestId}`);
-          }
-          return;
-        }
-        
-        // Handle state update messages (push updates)
-        if (data.type === 'stateUpdate' && data.state) {
-          sessionStateCache.set(sessionId, {
-            state: data.state,
-            timestamp: data.timestamp || Date.now()
-          });
-          console.warn(`State cache updated for session ${sessionId}`);
-          return;
-        }
-        
-        // Handle state error messages
-        if (data.type === 'stateError' && data.requestId) {
-          const query = pendingStateQueries.get(data.requestId);
-          if (query) {
-            clearTimeout(query.timeout);
-            pendingStateQueries.delete(data.requestId);
-            query.reject(new Error(data.error || 'State query failed'));
-          }
-          return;
-        }
-        
         // Handle other messages (for testing/debugging)
-        console.warn(`Received command from client (session ${sessionId}):`, data);
+        console.warn(`Received message from client (session ${sessionId}):`, data);
       } else {
         console.warn('Received message from unregistered client');
         ws.send(JSON.stringify({
@@ -171,14 +128,6 @@ wss.on('connection', (ws) => {
     if (sessionId) {
       console.warn(`Browser client disconnected (session: ${sessionId})`);
       wsClients.delete(sessionId);
-      // Clear state cache for disconnected session
-      sessionStateCache.delete(sessionId);
-      // Reject any pending queries for this session
-      for (const [requestId, query] of pendingStateQueries.entries()) {
-        clearTimeout(query.timeout);
-        pendingStateQueries.delete(requestId);
-        query.reject(new Error('Browser disconnected'));
-      }
     } else {
       console.warn('Browser client disconnected (unregistered)');
     }
@@ -202,81 +151,7 @@ function sendToSession(sessionId, command) {
   }
 }
 
-// Generate a unique request ID for state queries
-function generateRequestId() {
-  return randomUUID();
-}
-
-// Wait for a state response from the browser
-// Returns a Promise that resolves with the state or rejects on timeout/error
-function waitForStateResponse(requestId, timeout = STATE_QUERY_TIMEOUT) {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      pendingStateQueries.delete(requestId);
-      reject(new Error('State query timeout'));
-    }, timeout);
-    
-    pendingStateQueries.set(requestId, {
-      resolve,
-      reject,
-      timeout: timeoutId
-    });
-  });
-}
-
-// Query state from browser (with optional force refresh)
-async function queryStateFromBrowser(sessionId) {
-  const requestId = generateRequestId();
-  
-  // Send request to browser
-  const sent = sendToSession(sessionId, {
-    type: 'requestState',
-    requestId: requestId,
-    forceRefresh: false
-  });
-  
-  if (!sent) {
-    throw new Error('Browser not connected');
-  }
-  
-  // Wait for response
-  return await waitForStateResponse(requestId);
-}
-
-// Get state (always queries browser, cache only as fallback)
-async function getState(sessionId) {
-  let state;
-  let source;
-  let wasCached = false;
-  
-  // Always query browser for current state
-  try {
-    state = await queryStateFromBrowser(sessionId);
-    source = 'fresh';
-  } catch (error) {
-    // If query fails, fall back to cache if available (browser may be disconnected)
-    const cached = sessionStateCache.get(sessionId);
-    if (cached) {
-      console.warn(`Browser query failed for session ${sessionId}, returning cached state: ${error.message}`);
-      state = cached.state;
-      source = 'cache';
-      wasCached = true;
-    } else {
-      // No cache available, throw error
-      throw new Error(`Unable to retrieve state: ${error.message}. Browser may be disconnected.`);
-    }
-  }
-  
-  // Return state with metadata
-  return {
-    state,
-    metadata: {
-      source,
-      wasCached,
-      timestamp: new Date().toISOString()
-    }
-  };
-}
+// State query functions removed - we don't query or cache state
 
 // Request-scoped context for current session ID using AsyncLocalStorage
 // This maintains context across async operations
@@ -622,30 +497,17 @@ mcpServer.registerTool(
       };
     }
 
-    try {
-      const { state } = await getState(sessionId);
-      // Generate shareable URL with session state
-      const shareableUrl = `${BROWSER_URL}?sessionId=${sessionId}`;
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Shareable URL for this session:\n\n${shareableUrl}\n\nCopy and paste this URL to share the current Juicebox session.`
-          }
-        ]
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error creating shareable URL: ${error.message}`
-          }
-        ],
-        isError: true
-      };
-    }
+    // Generate shareable URL with session ID
+    const shareableUrl = `${BROWSER_URL}?sessionId=${sessionId}`;
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Shareable URL for this session:\n\n${shareableUrl}\n\nCopy and paste this URL to share the current Juicebox session.`
+        }
+      ]
+    };
   }
 );
 

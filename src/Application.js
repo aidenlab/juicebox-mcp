@@ -95,11 +95,7 @@ export class Application {
       (connected) => {
         this._updateConnectionStatus(connected);
       },
-      sessionId,
-      (forceRefresh) => {
-        // State query callback - return current browser state
-        return this.getBrowserState();
-      }
+      sessionId
     );
     this.wsClient.connect();
   }
@@ -136,18 +132,9 @@ export class Application {
    * Handle WebSocket command
    */
   async _handleWebSocketCommand(command) {
-    // Skip state updates for getter commands and toolCall notifications
-    const isGetterCommand = command.type.startsWith('get');
-    const isToolCallNotification = command.type === 'toolCall';
-    
     const handler = this.commandHandlers.get(command.type);
     if (handler) {
       await handler(command);
-      
-      // Send state update after executing state-modifying commands
-      if (!isGetterCommand && !isToolCallNotification) {
-        this._sendStateUpdate();
-      }
     } else {
       console.warn('Unknown command type:', command.type);
     }
@@ -360,63 +347,6 @@ export class Application {
     }
   }
 
-  /**
-   * Get current browser state
-   */
-  getBrowserState() {
-    // Always try to get the current browser in case it changed
-    const browser = this.browser || juicebox.getCurrentBrowser();
-    
-    if (!browser) {
-      return {
-        initialized: false
-      };
-    }
-
-    try {
-      const state = browser.state;
-      const contactMatrixView = browser.contactMatrixView;
-      
-      return {
-        initialized: true,
-        dataset: {
-          url: browser.dataset?.url || null,
-          name: browser.dataset?.name || null
-        },
-        state: {
-          chr1: state?.chr1 || null,
-          chr2: state?.chr2 || null,
-          zoom: state?.zoom || null,
-          pixelSize: state?.pixelSize || null,
-          x: state?.x || null,
-          y: state?.y || null,
-          normalization: state?.normalization || null
-        },
-        backgroundColor: contactMatrixView?.backgroundColor || null,
-        colorScale: contactMatrixView?.getColorScale() ? {
-          threshold: contactMatrixView.getColorScale().threshold,
-          r: contactMatrixView.getColorScale().r,
-          g: contactMatrixView.getColorScale().g,
-          b: contactMatrixView.getColorScale().b
-        } : null
-      };
-    } catch (error) {
-      console.error('Error getting browser state:', error);
-      return {
-        initialized: true,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Send state update to server (push update after command execution)
-   */
-  _sendStateUpdate() {
-    if (this.wsClient && this.wsClient.isConnected()) {
-      const state = this.getBrowserState();
-      this.wsClient.sendStateUpdate(state);
-    }
-  }
+  // State management removed - commands simply update Juicebox without querying state
 }
 
