@@ -7,6 +7,10 @@
 		{
 			"name": "hello3dmcp-server",
 			"path": "/Users/turner/MCPDevelopment/hello3dmcp-server"
+		},
+		{
+			"name": "hello3dmcp-frontend",
+			"path": "/Users/turner/MCPDevelopment/hello3dmcp-frontend"
 		}
 	],
 	"settings": {
