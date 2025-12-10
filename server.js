@@ -511,6 +511,44 @@ mcpServer.registerTool(
   }
 );
 
+// Register tool: get_juicebox_url
+mcpServer.registerTool(
+  'get_juicebox_url',
+  {
+    title: 'Get Juicebox URL',
+    description: 'Get the URL to open in your browser to connect the Juicebox visualization app. Use this when users ask how to connect, how to open the Juicebox app, or say things like "Hello juicebox", "Open juicebox", "Show me juicebox", "Launch juicebox", etc.',
+    inputSchema: {}
+  },
+  async () => {
+    // In STDIO mode, use the unique STDIO session ID generated at startup
+    // In HTTP mode, get session ID from context
+    const sessionId = getCurrentSessionId();
+    
+    if (!sessionId) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Error: No active session found. Please ensure the MCP connection is properly initialized.'
+          }
+        ],
+        isError: true
+      };
+    }
+
+    const connectionUrl = `${BROWSER_URL}?sessionId=${sessionId}`;
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Open this URL ${connectionUrl}\n\nto launch the Juicebox visualization app.`
+        }
+      ]
+    };
+  }
+);
+
 // Set up Express HTTP server for MCP transport
 const app = express();
 app.use(express.json());
