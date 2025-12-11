@@ -30,12 +30,12 @@ export default defineConfig({
   root: '.',
   publicDir: 'public',
   server: {
-    port: 3000,
-    open: '/dashboard.html',
+    port: 5173,
+    open: '/index.html',
   },
   preview: {
-    port: 3000,
-    open: '/dashboard.html',
+    port: 5173,
+    open: '/index.html',
   },
   css: {
     preprocessorOptions: {

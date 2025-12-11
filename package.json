@@ -35,7 +35,9 @@
     "prepublishOnly": "npm run build",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "start": "node server.js",
+    "mcp:server": "node server.js"
   },
   "keywords": [
     "conformation capture",
@@ -46,6 +48,13 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aidenlab/juicebox-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "ws": "^8.18.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@vitest/ui": "^4.0.15",
