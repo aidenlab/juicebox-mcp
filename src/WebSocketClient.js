@@ -49,10 +49,10 @@ export class WebSocketClient {
       
       // Only auto-detect if not localhost (production deployment)
       if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        // Try WebSocket on same domain, port 3011 (changed from 3001 to avoid conflict with hello3dmcp-server)
+        // Try WebSocket on same domain, port 3011
         wsUrl = `${protocol}//${hostname}:3011`;
       } else {
-        // Development: default to localhost (port 3011 to avoid conflict with hello3dmcp-server)
+        // Development: default to localhost
         wsUrl = 'ws://localhost:3011';
       }
     }

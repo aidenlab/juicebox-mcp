@@ -61,7 +61,7 @@ npm run start:mcpb
 
 This runs the bundled server from `dist/juicebox-mcp-server.js`. Verify that:
 - The server starts without errors
-- WebSocket server is listening on port 3001
+- WebSocket server is listening on port 3011
 - MCP server is ready (STDIO mode) or HTTP server is listening (HTTP mode)
 
 Press `Ctrl+C` to stop the server.
@@ -138,8 +138,8 @@ The manifest file tells Claude Desktop how to run the server:
       "args": ["${__dirname}/dist/juicebox-mcp-server.js"],
       "env": {
         "BROWSER_URL": "http://localhost:5173",
-        "MCP_PORT": "3000",
-        "WS_PORT": "3001"
+        "MCP_PORT": "3010",
+        "WS_PORT": "3011"
       }
     }
   }

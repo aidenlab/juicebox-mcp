@@ -12,10 +12,10 @@ If you're seeing "No active WebSocket connection found for session" errors, foll
 
 ### 1. Verify WebSocket Server is Running
 
-Check if the WebSocket server is listening on port 3001:
+Check if the WebSocket server is listening on port 3011:
 
 ```bash
-lsof -i :3001
+lsof -i :3011
 ```
 
 You should see a `node` process listening. If not, start the server:
@@ -29,9 +29,9 @@ node server.js
 Open your browser's developer console (F12) and look for:
 
 **Expected logs:**
-- `Connecting to WebSocket server at ws://localhost:3001...`
+- `Connecting to WebSocket server at ws://localhost:3011...`
 - `Session ID: <your-session-id>`
-- `WebSocket connected to: ws://localhost:3001`
+- `WebSocket connected to: ws://localhost:3011`
 - `Session ID for registration: <your-session-id>`
 - `Registering session ID: <your-session-id>`
 - `✅ Session registered successfully: <your-session-id>`
@@ -95,16 +95,16 @@ The frontend determines the WebSocket URL in this order:
 1. **Explicit URL parameter** (if passed to `connect()`)
 2. **Environment variable** `VITE_WS_URL` (for Netlify/production)
 3. **Auto-detect** from current hostname (if not localhost)
-4. **Default** to `ws://localhost:3001` (for localhost)
+4. **Default** to `ws://localhost:3011` (for localhost)
 
 **For local development:**
-- Should use: `ws://localhost:3001`
-- Check browser console for: `Connecting to WebSocket server at ws://localhost:3001...`
+- Should use: `ws://localhost:3011`
+- Check browser console for: `Connecting to WebSocket server at ws://localhost:3011...`
 
 **For Netlify:**
 - Must set `VITE_WS_URL` environment variable in Netlify
-- Should be: `wss://your-tunnel-url.loca.lt` (or your tunnel URL)
-- Must use `wss://` (secure WebSocket) for HTTPS sites
+- Should be: `ws://localhost:3011` (no tunneling needed - browser connects directly)
+- Use `ws://` (not `wss://`) since connecting from local browser to local server
 
 ### 7. Common Issues and Solutions
 
@@ -113,8 +113,8 @@ The frontend determines the WebSocket URL in this order:
 
 #### Issue: "WebSocket error" or connection fails
 **Solutions:**
-- Verify server is running: `lsof -i :3001`
-- Check firewall isn't blocking port 3001
+- Verify server is running: `lsof -i :3011`
+- Check firewall isn't blocking port 3011
 - Try restarting the server
 - Check server logs for errors
 
@@ -158,7 +158,7 @@ Then try calling a tool (e.g., `load_map`) and verify:
 
 ## Quick Checklist
 
-- [ ] WebSocket server is running on port 3001
+- [ ] WebSocket server is running on port 3011
 - [ ] Browser URL includes `?sessionId=<id>` parameter
 - [ ] Session ID in URL matches session ID in server logs
 - [ ] Browser console shows "WebSocket connected"

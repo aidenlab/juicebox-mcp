@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 
 // Parse command line arguments
 function parseCommandLineArgs() {
@@ -33,8 +33,8 @@ Options:
 
 Environment Variables:
   BROWSER_URL                Browser URL (used if --browser-url not provided)
-  MCP_PORT                   MCP server port (default: 3000)
-  WS_PORT                    WebSocket server port (default: 3001)
+  MCP_PORT                   MCP server port (default: 3010)
+  WS_PORT                    WebSocket server port (default: 3011)
 
 Configuration Priority:
   1. Command line argument (--browser-url)
@@ -53,15 +53,16 @@ Examples:
 
 const cliArgs = parseCommandLineArgs();
 
-const MCP_PORT = process.env.MCP_PORT ? parseInt(process.env.MCP_PORT, 10) : 3000;
-const WS_PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT, 10) : 3001;
+const MCP_PORT = process.env.MCP_PORT ? parseInt(process.env.MCP_PORT, 10) : 3010;
+const WS_PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT, 10) : 3011;
 // Browser URL for the Juicebox app
 // Priority: 1) Command line argument (--browser-url), 2) Environment variable (BROWSER_URL), 
 //           3) Default (localhost)
 const BROWSER_URL = cliArgs.browserUrl || process.env.BROWSER_URL || 'http://localhost:5173';
 
 // File-based logger for diagnostics (visible even when running in Claude Desktop)
-const LOG_FILE = process.env.JUICEBOX_MCP_LOG_FILE || join(homedir(), 'juicebox-mcp-server.log');
+// Default to temp directory to avoid cluttering user's home directory
+const LOG_FILE = process.env.JUICEBOX_MCP_LOG_FILE || join(tmpdir(), 'juicebox-mcp-server.log');
 const ENABLE_FILE_LOGGING = process.env.JUICEBOX_MCP_LOG !== 'false';
 
 function logToFile(level, ...args) {
@@ -742,10 +743,10 @@ if (isStdioMode) {
   logError('MCP server connected via STDIO transport');
   logError(`Browser URL configured: ${BROWSER_URL}`);
   logError(`STDIO session ID: ${STDIO_SESSION_ID}`);
-  logInfo(`Log file: ${LOG_FILE}`);
+  logInfo(`Diagnostic log file: ${LOG_FILE}`);
 } else {
   logError('Running in HTTP/SSE mode');
-  logInfo(`Log file: ${LOG_FILE}`);
+  logInfo(`Diagnostic log file: ${LOG_FILE}`);
 }
 
 // Handle POST requests (initialization and tool calls) - only in HTTP mode
@@ -953,7 +954,7 @@ if (!isStdioMode) {
     // Use logError for startup messages to avoid interfering with MCP protocol on stdout
     logError(`MCP Server listening on http://localhost:${MCP_PORT}/mcp`);
     logError(`Browser URL configured: ${BROWSER_URL}`);
-    logInfo(`Log file: ${LOG_FILE}`);
+    logInfo(`Diagnostic log file: ${LOG_FILE}`);
     if (existsSync(distPath)) {
       logError(`Serving static files from ${distPath}`);
     }

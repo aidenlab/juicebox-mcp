@@ -8,15 +8,15 @@ The Juicebox MCP project has two build configurations:
 - **Library build** (`npm run build`): Builds the library for npm package distribution
 - **Netlify build** (`npm run build:netlify`): Builds a standard web app for Netlify hosting
 
-**Important Note**: Even though the frontend is hosted on Netlify, it runs in your browser on your local machine. This means the WebSocket connection from the browser to your local WebSocket server can use `ws://localhost:3001` - no tunneling required for the WebSocket connection!
+**Important Note**: Even though the frontend is hosted on Netlify, it runs in your browser on your local machine. This means the WebSocket connection from the browser to your local WebSocket server can use `ws://localhost:3011` - no tunneling required for the WebSocket connection!
 
-Tunneling is only needed for the MCP HTTP endpoint (port 3000) if you want ChatGPT/Cursor to connect to your local MCP server.
+Tunneling is only needed for the MCP HTTP endpoint (port 3010) if you want ChatGPT/Cursor to connect to your local MCP server.
 
 ## Quick Setup Checklist
 
 - [ ] MCP server running locally
-- [ ] MCP HTTP tunnel active (port 3000) - only if using ChatGPT/Cursor
-- [ ] `VITE_WS_URL` set in Netlify environment variables to `ws://localhost:3001`
+- [ ] MCP HTTP tunnel active (port 3010) - only if using ChatGPT/Cursor
+- [ ] `VITE_WS_URL` set in Netlify environment variables to `ws://localhost:3011`
 - [ ] Netlify deployment completed
 
 ## Build Configuration
@@ -71,8 +71,8 @@ node server.js -u https://your-app.netlify.app
 ```
 
 The server will start on:
-- MCP endpoint: `http://localhost:3000/mcp`
-- WebSocket: `ws://localhost:3001`
+- MCP endpoint: `http://localhost:3010/mcp`
+- WebSocket: `ws://localhost:3011`
 
 ### Step 2: Create Tunnel for MCP HTTP (Optional)
 
@@ -83,7 +83,7 @@ The server will start on:
 #### Using ngrok:
 
 ```bash
-ngrok http 3000
+ngrok http 3010
 ```
 Creates URL (e.g., `https://sagittal-christiana-glareless.ngrok-free.dev`)
 
@@ -97,9 +97,9 @@ Creates URL (e.g., `https://sagittal-christiana-glareless.ngrok-free.dev`)
 2. Navigate to **Site settings** → **Environment variables**
 3. Add a new variable:
    - **Key**: `VITE_WS_URL`
-   - **Value**: `ws://localhost:3001`
+   - **Value**: `ws://localhost:3011`
    - ⚠️ **Important**: 
-     - Use `ws://localhost:3001` (not `wss://`) since you're connecting from your local browser to your local server
+     - Use `ws://localhost:3011` (not `wss://`) since you're connecting from your local browser to your local server
      - This variable is **mandatory** for Netlify - the connection will fail without it
      - The frontend cannot auto-detect the WebSocket URL when hosted on Netlify
 4. **Redeploy** your site (or trigger a new deployment) after setting the variable
@@ -142,7 +142,7 @@ Add to Cursor Settings → Features → Model Context Protocol:
 
 ## Important Notes
 
-- **WebSocket connection**: Uses `ws://localhost:3001` - no tunneling needed! The frontend runs in your browser, which can connect directly to your local WebSocket server.
+- **WebSocket connection**: Uses `ws://localhost:3011` - no tunneling needed! The frontend runs in your browser, which can connect directly to your local WebSocket server.
 - **MCP HTTP tunnel**: Only needed if using ChatGPT/Cursor. Keep the tunnel active while using the MCP client.
 - **Redeploy Netlify after changes**: When you update `VITE_WS_URL` in Netlify, you must trigger a new deployment for the change to take effect.
 - **Build command**: Make sure Netlify is configured to use `npm run build:netlify` (this is set in `netlify.toml`)
@@ -151,19 +151,19 @@ Add to Cursor Settings → Features → Model Context Protocol:
 
 ### WebSocket Not Connecting
 
-- ✅ **REQUIRED**: `VITE_WS_URL` must be set in Netlify environment variables to `ws://localhost:3001` (this is mandatory, not optional)
+- ✅ **REQUIRED**: `VITE_WS_URL` must be set in Netlify environment variables to `ws://localhost:3011` (this is mandatory, not optional)
 - ✅ Check that you've redeployed after setting the variable (environment variables require a redeploy)
-- ✅ Use `ws://localhost:3001` (not `wss://`) - you're connecting from your local browser to your local server
-- ✅ Verify your local WebSocket server is running on port 3001: `lsof -i :3001`
+- ✅ Use `ws://localhost:3011` (not `wss://`) - you're connecting from your local browser to your local server
+- ✅ Verify your local WebSocket server is running on port 3011: `lsof -i :3011`
 - ✅ Check browser console for connection errors
-- ✅ Check browser console logs - should show: `Connecting to WebSocket server at ws://localhost:3001...`
+- ✅ Check browser console logs - should show: `Connecting to WebSocket server at ws://localhost:3011...`
 - ✅ Make sure you're accessing the Netlify site from the same machine where the server is running
 
 ### MCP Client Can't Connect
 
 - ✅ Only relevant if using ChatGPT/Cursor
 - ✅ Verify MCP endpoint URL includes `/mcp` at the end
-- ✅ Check that MCP server is running locally on port 3000
+- ✅ Check that MCP server is running locally on port 3010
 - ✅ Ensure MCP tunnel is still active (if using one)
 - ✅ Check server logs for connection errors
 
@@ -178,7 +178,7 @@ Add to Cursor Settings → Features → Model Context Protocol:
 
 - ✅ Verify WebSocket connection is established (check browser console)
 - ✅ Ensure MCP server is running and broadcasting commands
-- ✅ Check that WebSocket server is running on port 3001
+- ✅ Check that WebSocket server is running on port 3011
 - ✅ Verify you're using the correct build command (`build:netlify`)
 - ✅ Check browser console for any error messages
 

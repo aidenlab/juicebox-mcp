@@ -57,8 +57,8 @@ if (!isStdioMode) {
 Communication between the MCP server and the Juicebox browser frontend application.
 
 ### How It Works
-- WebSocket server runs on port 3001 (configurable via `WS_PORT`)
-- Browser connects to `ws://localhost:3001`
+- WebSocket server runs on port 3011 (configurable via `WS_PORT`)
+- Browser connects to `ws://localhost:3011`
 - Server sends JSON commands to control the visualization
 - Browser sends session registration and status updates
 
@@ -170,7 +170,7 @@ The WebSocket server is created unconditionally (line 69) because:
 
 When Claude Desktop runs your server:
 - ✅ STDIO transport handles MCP protocol messages from Claude Desktop
-- ✅ WebSocket server runs on port 3001 for browser connections
+- ✅ WebSocket server runs on port 3011 for browser connections
 - ✅ Both channels operate independently and simultaneously
 
 ### 4. Session ID linking
