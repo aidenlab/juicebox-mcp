@@ -67,13 +67,15 @@ export class WebSocketClient {
       console.log(`Checking if WebSocket server is available at ${wsUrl}...`);
     } else {
       console.log(`Connecting to WebSocket server at ${wsUrl}...`);
+      console.log(`Session ID: ${this.sessionId || 'none'}`);
     }
 
     try {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected to:', wsUrl);
+        console.log('Session ID for registration:', this.sessionId || 'none');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.serverAvailable = true;
@@ -106,7 +108,7 @@ export class WebSocketClient {
           
           // Handle session registration confirmation
           if (data.type === 'sessionRegistered') {
-            console.log(`Session registered successfully: ${data.sessionId}`);
+            console.log(`✅ Session registered successfully: ${data.sessionId}`);
             return;
           }
           
@@ -131,11 +133,13 @@ export class WebSocketClient {
         // Don't log errors in polling mode to reduce noise
         if (!this.pollingMode) {
           console.error('WebSocket error:', error);
+          console.error('Failed to connect to:', wsUrl);
         }
         this.isConnecting = false;
       };
 
       this.ws.onclose = (event) => {
+        console.log(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason || 'none'}, Clean: ${event.wasClean}`);
         this.isConnecting = false;
         this._notifyStatusChange(false);
         
