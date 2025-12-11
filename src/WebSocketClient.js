@@ -49,11 +49,11 @@ export class WebSocketClient {
       
       // Only auto-detect if not localhost (production deployment)
       if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        // Try WebSocket on same domain, port 3001
-        wsUrl = `${protocol}//${hostname}:3001`;
+        // Try WebSocket on same domain, port 3011 (changed from 3001 to avoid conflict with hello3dmcp-server)
+        wsUrl = `${protocol}//${hostname}:3011`;
       } else {
-        // Development: default to localhost
-        wsUrl = 'ws://localhost:3001';
+        // Development: default to localhost (port 3011 to avoid conflict with hello3dmcp-server)
+        wsUrl = 'ws://localhost:3011';
       }
     }
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
