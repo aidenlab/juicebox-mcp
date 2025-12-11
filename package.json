@@ -30,7 +30,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:netlify": "vite build --config vite.config.netlify.js",
     "preview": "vite preview",
+    "preview:netlify": "vite preview --config vite.config.netlify.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "vitest",

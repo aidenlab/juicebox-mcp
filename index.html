@@ -161,24 +161,7 @@
 
     <div id="app-container"></div>
 
-    <script type="module">
-        import { Application } from './src/Application.js';
-
-        // Default configuration
-        const config = {
-            backgroundColor: '255,255,255'
-        };
-
-        // Initialize application
-        const app = new Application();
-        app.init(document.getElementById('app-container'), config)
-            .then(() => {
-                console.log('Juicebox MCP application initialized');
-            })
-            .catch((error) => {
-                console.error('Error initializing application:', error);
-            });
-    </script>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>
 
