@@ -31,6 +31,9 @@
     "dev": "vite",
     "build": "vite build",
     "build:netlify": "vite build --config vite.config.netlify.js",
+    "build:mcpb": "node esbuild.config.js && node build-mcpb.js",
+    "build:mcpb:bundle": "node esbuild.config.js",
+    "build:mcpb:package": "node build-mcpb.js",
     "preview": "vite preview",
     "preview:netlify": "vite preview --config vite.config.netlify.js",
     "prepare": "npm run build",
@@ -39,6 +42,7 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "start": "node server.js",
+    "start:mcpb": "node dist/juicebox-mcp-server.js",
     "mcp:server": "node server.js"
   },
   "keywords": [
@@ -61,8 +65,10 @@
   "devDependencies": {
     "@vitest/ui": "^4.0.15",
     "@xmldom/xmldom": "^0.8.11",
+    "archiver": "^7.0.1",
     "atob": "^2.1.2",
     "btoa": "^1.2.1",
+    "esbuild": "^0.19.0",
     "google-utils": "github:igvteam/google-utils#v1.0.2",
     "hic-straw": "^2.1.4",
     "igv": "^2.15.5",

@@ -134,7 +134,11 @@ export class Application {
   async _handleWebSocketCommand(command) {
     const handler = this.commandHandlers.get(command.type);
     if (handler) {
-      await handler(command);
+      try {
+        await handler(command);
+      } catch (error) {
+        console.error(`Error in handler for ${command.type}:`, error);
+      }
     } else {
       console.warn('Unknown command type:', command.type);
     }

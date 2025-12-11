@@ -1,0 +1,24 @@
+{
+  "manifest_version": "0.1",
+  "name": "juicebox-mcp-server",
+  "version": "0.0.1",
+  "description": "MCP server for controlling Juicebox Hi-C contact map visualization via Model Context Protocol",
+  "author": {
+    "name": "Douglass Turner"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "dist/juicebox-mcp-server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/juicebox-mcp-server.js"
+      ],
+      "env": {
+        "BROWSER_URL": "https://juicebox-mcp.netlify.app/",
+        "MCP_PORT": "3010",
+        "WS_PORT": "3011"
+      }
+    }
+  }
+}

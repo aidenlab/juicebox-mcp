@@ -10,7 +10,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { z } from 'zod';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 
 // Parse command line arguments
 function parseCommandLineArgs() {
@@ -59,11 +60,52 @@ const WS_PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT, 10) : 3001;
 //           3) Default (localhost)
 const BROWSER_URL = cliArgs.browserUrl || process.env.BROWSER_URL || 'http://localhost:5173';
 
+// File-based logger for diagnostics (visible even when running in Claude Desktop)
+const LOG_FILE = process.env.JUICEBOX_MCP_LOG_FILE || join(homedir(), 'juicebox-mcp-server.log');
+const ENABLE_FILE_LOGGING = process.env.JUICEBOX_MCP_LOG !== 'false';
+
+function logToFile(level, ...args) {
+  if (!ENABLE_FILE_LOGGING) return;
+  
+  try {
+    const timestamp = new Date().toISOString();
+    const message = args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' ');
+    const logLine = `[${timestamp}] [${level}] ${message}\n`;
+    appendFileSync(LOG_FILE, logLine, 'utf8');
+  } catch (error) {
+    // Silently fail if we can't write to log file
+    // Don't use console.error here to avoid infinite loops
+  }
+}
+
+// Enhanced logging functions that write to both stderr and file
+function logError(...args) {
+  console.error(...args);
+  logToFile('ERROR', ...args);
+}
+
+function logWarn(...args) {
+  console.warn(...args);
+  logToFile('WARN', ...args);
+}
+
+function logInfo(...args) {
+  // Only log to file for info messages (don't pollute stderr)
+  logToFile('INFO', ...args);
+}
+
 // Store connected WebSocket clients by session ID
 // Map<sessionId, WebSocket>
 const wsClients = new Map();
 
 // State management removed - commands will simply update Juicebox without querying state
+
+// Detect if we're running in STDIO mode (subprocess) or HTTP mode
+// We need to check this early to handle WebSocket server errors appropriately
+const forceHttpMode = process.env.MCP_TRANSPORT === 'http' || process.env.MCP_TRANSPORT === 'sse' || process.env.FORCE_HTTP_MODE === 'true';
+const isStdioMode = !forceHttpMode && !process.stdin.isTTY;
 
 // Create WebSocket server for browser communication
 const wss = new WebSocketServer({ port: WS_PORT });
@@ -71,27 +113,45 @@ const wss = new WebSocketServer({ port: WS_PORT });
 // Handle WebSocket server errors (e.g., port already in use)
 wss.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(`\n❌ ERROR: Port ${WS_PORT} is already in use.`);
-    console.error(`   Another instance of the server may be running.`);
-    console.error(`   To fix this:`);
-    console.error(`   1. Find the process using port ${WS_PORT}: lsof -i :${WS_PORT}`);
-    console.error(`   2. Kill it: kill <PID>`);
-    console.error(`   3. Or change WS_PORT in your environment\n`);
-    process.exit(1);
+    logError(`\n⚠️  WARNING: Port ${WS_PORT} is already in use.`);
+    logError(`   Another instance of the server may be running.`);
+    if (isStdioMode) {
+      // In STDIO mode, WebSocket server is optional - just warn and continue
+      // The STDIO transport is the critical part for Claude Desktop
+      logError(`   Continuing in STDIO mode (WebSocket server unavailable).`);
+      logError(`   Browser connections will not work until port ${WS_PORT} is free.`);
+      logError(`   To fix this:`);
+      logError(`   1. Find the process using port ${WS_PORT}: lsof -i :${WS_PORT}`);
+      logError(`   2. Kill it: kill <PID>`);
+      logError(`   3. Or change WS_PORT in your environment\n`);
+    } else {
+      // In HTTP mode, WebSocket server is required - exit
+      logError(`   This is required for HTTP mode. Exiting.\n`);
+      process.exit(1);
+    }
   } else {
-    console.error('WebSocket server error:', error);
-    process.exit(1);
+    logError('WebSocket server error:', error);
+    if (!isStdioMode) {
+      // Only exit in HTTP mode - STDIO mode can continue without WebSocket server
+      process.exit(1);
+    } else {
+      logError('Continuing in STDIO mode despite WebSocket server error.');
+    }
   }
 });
 
 wss.on('listening', () => {
-  // Use console.error to avoid interfering with MCP protocol on stdout
-  console.error(`WebSocket server listening on ws://localhost:${WS_PORT}`);
+  // Log to file (and stderr) - won't interfere with MCP protocol on stdout
+  logError(`WebSocket server listening on ws://localhost:${WS_PORT}`);
 });
 
 wss.on('connection', (ws) => {
-  console.warn('Browser client connected (waiting for session ID)');
+  logInfo('Browser client connected (waiting for session ID)');
   let sessionId = null;
+
+  ws.on('error', (error) => {
+    logError(`WebSocket error (session: ${sessionId || 'unregistered'}):`, error);
+  });
 
   // Handle incoming messages from clients
   ws.on('message', (message) => {
@@ -102,7 +162,7 @@ wss.on('connection', (ws) => {
       if (data.type === 'registerSession' && data.sessionId) {
         sessionId = data.sessionId;
         wsClients.set(sessionId, ws);
-        console.warn(`Browser client registered with session ID: ${sessionId}`);
+        logInfo(`Browser client registered with session ID: ${sessionId}`);
         
         // Send confirmation
         ws.send(JSON.stringify({
@@ -111,31 +171,28 @@ wss.on('connection', (ws) => {
         }));
       } else if (sessionId) {
         // Handle other messages (for testing/debugging)
-        console.warn(`Received message from client (session ${sessionId}):`, data);
+        logInfo(`Received message from client (session ${sessionId}):`, data.type || 'unknown');
       } else {
-        console.warn('Received message from unregistered client');
+        logWarn('Received message from unregistered client');
         ws.send(JSON.stringify({
           type: 'error',
           message: 'Session not registered. Please send registerSession message first.'
         }));
       }
     } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
+      logError('Error parsing WebSocket message:', error);
     }
   });
 
   ws.on('close', () => {
     if (sessionId) {
-      console.warn(`Browser client disconnected (session: ${sessionId})`);
+      logInfo(`Browser client disconnected (session: ${sessionId})`);
       wsClients.delete(sessionId);
     } else {
-      console.warn('Browser client disconnected (unregistered)');
+      logInfo('Browser client disconnected (unregistered)');
     }
   });
 
-  ws.on('error', (error) => {
-    console.error(`WebSocket error (session: ${sessionId || 'unregistered'}):`, error);
-  });
 });
 
 // Send command to a specific session's browser client
@@ -143,10 +200,16 @@ function sendToSession(sessionId, command) {
   const ws = wsClients.get(sessionId);
   if (ws && ws.readyState === 1) { // WebSocket.OPEN
     const message = JSON.stringify(command);
-    ws.send(message);
-    return true;
+    try {
+      ws.send(message);
+      logInfo(`Command sent to session ${sessionId}: ${command.type}`);
+      return true;
+    } catch (error) {
+      logError(`Error sending WebSocket message to session ${sessionId}: ${error.message}`);
+      return false;
+    }
   } else {
-    console.warn(`No active WebSocket connection found for session: ${sessionId}`);
+    logWarn(`No active WebSocket connection for session: ${sessionId} (available: ${Array.from(wsClients.keys()).join(', ') || 'none'})`);
     return false;
   }
 }
@@ -161,24 +224,33 @@ const sessionContext = new AsyncLocalStorage();
 function routeToCurrentSession(command) {
   const sessionId = sessionContext.getStore();
   if (sessionId) {
-    console.error(`Routing command to session: ${sessionId}`, command.type);
-    sendToSession(sessionId, command);
+    const sent = sendToSession(sessionId, command);
+    if (!sent && wsClients.size > 0) {
+      // Fallback: if specific session not found, broadcast to all clients
+      logWarn(`Session ${sessionId} not found, broadcasting to all ${wsClients.size} client(s)`);
+      broadcastToClients(command);
+    }
   } else if (isStdioMode) {
     // In STDIO mode, route to the unique STDIO session ID
     if (STDIO_SESSION_ID) {
-      console.error(`Routing command in STDIO mode to session: ${STDIO_SESSION_ID}`, command.type);
-      sendToSession(STDIO_SESSION_ID, command);
+      const sent = sendToSession(STDIO_SESSION_ID, command);
+      if (!sent && wsClients.size > 0) {
+        // Fallback: if STDIO session not found, broadcast to all clients
+        logWarn(`STDIO session ${STDIO_SESSION_ID} not found, broadcasting to all ${wsClients.size} client(s)`);
+        broadcastToClients(command);
+      } else if (!sent) {
+        logWarn(`No WebSocket clients connected. Command not routed: ${command.type}`);
+      }
     } else {
-      console.error('Routing command in STDIO mode - no session ID available, broadcasting to all clients:', command.type);
+      logWarn('Routing command in STDIO mode - no session ID available, broadcasting to all clients');
       if (wsClients.size > 0) {
         broadcastToClients(command);
       } else {
-        console.error('No WebSocket clients connected. Command not routed:', command.type);
+        logWarn(`No WebSocket clients connected. Command not routed: ${command.type}`);
       }
     }
   } else {
-    console.warn('Tool handler called but no session context available. Command not routed.');
-    console.warn('Current request session ID:', sessionId);
+    logWarn('Tool handler called but no session context available. Command not routed.');
   }
 }
 
@@ -500,11 +572,74 @@ mcpServer.registerTool(
     // Generate shareable URL with session ID
     const shareableUrl = `${BROWSER_URL}?sessionId=${sessionId}`;
     
+    // Include connection status
+    const registeredSessions = Array.from(wsClients.keys());
+    const isConnected = registeredSessions.includes(sessionId);
+    const connectionStatus = isConnected 
+      ? `✅ WebSocket client connected and registered`
+      : `⚠️  WebSocket client NOT connected (registered sessions: ${registeredSessions.length > 0 ? registeredSessions.join(', ') : 'none'})`;
+    
     return {
       content: [
         {
           type: 'text',
-          text: `Shareable URL for this session:\n\n${shareableUrl}\n\nCopy and paste this URL to share the current Juicebox session.`
+          text: `Shareable URL for this session:\n\n${shareableUrl}\n\n${connectionStatus}\n\nCopy and paste this URL to share the current Juicebox session.`
+        }
+      ]
+    };
+  }
+);
+
+// Register tool: get_server_status
+mcpServer.registerTool(
+  'get_server_status',
+  {
+    title: 'Get Server Status',
+    description: 'Get diagnostic information about the MCP server, WebSocket connections, and session status. Use this for debugging connection issues.',
+    inputSchema: {}
+  },
+  async () => {
+    const sessionId = getCurrentSessionId();
+    const registeredSessions = Array.from(wsClients.keys());
+    const isConnected = sessionId && registeredSessions.includes(sessionId);
+    
+    // Check WebSocket connection states
+    const wsConnectionStates = {};
+    wsClients.forEach((ws, sid) => {
+      wsConnectionStates[sid] = {
+        readyState: ws.readyState,
+        readyStateName: ws.readyState === 0 ? 'CONNECTING' : ws.readyState === 1 ? 'OPEN' : ws.readyState === 2 ? 'CLOSING' : 'CLOSED'
+      };
+    });
+    
+    const statusInfo = {
+      mode: isStdioMode ? 'STDIO' : 'HTTP/SSE',
+      currentSessionId: sessionId || 'none',
+      stdioSessionId: STDIO_SESSION_ID || 'not set',
+      webSocketServerPort: WS_PORT,
+      webSocketClientsConnected: wsClients.size,
+      registeredSessionIds: registeredSessions,
+      currentSessionConnected: isConnected,
+      webSocketConnectionStates: wsConnectionStates,
+      browserUrl: BROWSER_URL
+    };
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Server Status:\n\n` +
+            `Mode: ${statusInfo.mode}\n` +
+            `Current Session ID: ${statusInfo.currentSessionId}\n` +
+            `STDIO Session ID: ${statusInfo.stdioSessionId}\n` +
+            `WebSocket Server Port: ${statusInfo.webSocketServerPort}\n` +
+            `WebSocket Clients Connected: ${statusInfo.webSocketClientsConnected}\n` +
+            `Registered Session IDs: ${statusInfo.registeredSessionIds.length > 0 ? statusInfo.registeredSessionIds.join(', ') : 'none'}\n` +
+            `Current Session Connected: ${statusInfo.currentSessionConnected ? '✅ Yes' : '❌ No'}\n` +
+            `Browser URL: ${statusInfo.browserUrl}\n\n` +
+            (Object.keys(wsConnectionStates).length > 0 
+              ? `WebSocket Connection States:\n${Object.entries(wsConnectionStates).map(([sid, state]) => `  ${sid}: ${state.readyStateName} (${state.readyState})`).join('\n')}\n`
+              : 'No WebSocket connections')
         }
       ]
     };
@@ -538,11 +673,22 @@ mcpServer.registerTool(
 
     const connectionUrl = `${BROWSER_URL}?sessionId=${sessionId}`;
     
+    // Include diagnostic info for debugging
+    const registeredSessions = Array.from(wsClients.keys());
+    const isConnected = registeredSessions.includes(sessionId);
+    const connectionStatus = isConnected 
+      ? `✅ WebSocket client connected and registered`
+      : `⚠️  WebSocket client NOT connected`;
+    
+    const diagnosticInfo = isStdioMode 
+      ? `\n\n[Debug Info]\nMode: STDIO\nSTDIO Session ID: ${STDIO_SESSION_ID || 'not set'}\n${connectionStatus}\nRegistered WebSocket Sessions: ${registeredSessions.length > 0 ? registeredSessions.join(', ') : 'none'}\nWebSocket Server Port: ${WS_PORT}`
+      : `\n\n[Debug Info]\nMode: HTTP/SSE\nCurrent Session ID: ${sessionId}\n${connectionStatus}\nRegistered WebSocket Sessions: ${registeredSessions.length > 0 ? registeredSessions.join(', ') : 'none'}\nWebSocket Server Port: ${WS_PORT}`;
+    
     return {
       content: [
         {
           type: 'text',
-          text: `Open this URL ${connectionUrl}\n\nto launch the Juicebox visualization app.`
+          text: `Open this URL ${connectionUrl}\n\nto launch the Juicebox visualization app.${diagnosticInfo}`
         }
       ]
     };
@@ -562,9 +708,7 @@ app.use(
   })
 );
 
-// Detect if we're running in STDIO mode (subprocess) or HTTP mode
-const forceHttpMode = process.env.MCP_TRANSPORT === 'http' || process.env.MCP_TRANSPORT === 'sse' || process.env.FORCE_HTTP_MODE === 'true';
-const isStdioMode = !forceHttpMode && !process.stdin.isTTY;
+// STDIO mode detection moved earlier (before WebSocket server creation)
 
 // Map to store transports by session ID (for HTTP mode)
 const transports = {};
@@ -586,20 +730,22 @@ if (isStdioMode) {
   // Generate a unique session ID for this STDIO connection
   STDIO_SESSION_ID = randomUUID();
   
-  console.error('Running in STDIO mode (subprocess)');
+  logError('Running in STDIO mode (subprocess)');
   const stdioTransport = new StdioServerTransport();
   
   // Connect MCP server to STDIO transport
   mcpServer.connect(stdioTransport).catch((error) => {
-    console.error('Error connecting MCP server to STDIO transport:', error);
+    logError('Error connecting MCP server to STDIO transport:', error);
     process.exit(1);
   });
   
-  console.error('MCP server connected via STDIO transport');
-  console.error(`Browser URL configured: ${BROWSER_URL}`);
-  console.error(`STDIO session ID: ${STDIO_SESSION_ID}`);
+  logError('MCP server connected via STDIO transport');
+  logError(`Browser URL configured: ${BROWSER_URL}`);
+  logError(`STDIO session ID: ${STDIO_SESSION_ID}`);
+  logInfo(`Log file: ${LOG_FILE}`);
 } else {
-  console.error('Running in HTTP/SSE mode');
+  logError('Running in HTTP/SSE mode');
+  logInfo(`Log file: ${LOG_FILE}`);
 }
 
 // Handle POST requests (initialization and tool calls) - only in HTTP mode
@@ -607,12 +753,8 @@ if (!isStdioMode) {
 app.post('/mcp', async (req, res) => {
   const sessionId = req.headers['mcp-session-id'];
   
-  // Log request for debugging (use stderr to avoid interfering with MCP protocol on stdout)
-  if (sessionId) {
-    console.error(`Received MCP request for session: ${sessionId}, method: ${req.body?.method || 'unknown'}`);
-  } else {
-    console.error(`Received MCP request (no session), method: ${req.body?.method || 'unknown'}`);
-  }
+  // Log request for debugging
+  logInfo(`MCP request: ${req.body?.method || 'unknown'} (session: ${sessionId || 'none'})`);
   
   try {
     let transport;
@@ -624,11 +766,11 @@ app.post('/mcp', async (req, res) => {
       // Session ID provided but transport doesn't exist - session expired or lost
       // Allow re-initialization if this is an initialize request
       if (isInitializeRequest(req.body)) {
-        console.error(`Session ${sessionId} not found, creating new transport for re-initialization`);
+        logInfo(`Session ${sessionId} not found, creating new transport for re-initialization`);
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => sessionId, // Reuse the same session ID
           onsessioninitialized: (sid) => {
-            console.error(`MCP session re-initialized: ${sid}`);
+            logInfo(`MCP session re-initialized: ${sid}`);
             transports[sid] = transport;
           }
         });
@@ -636,7 +778,7 @@ app.post('/mcp', async (req, res) => {
         transport.onclose = () => {
           const sid = transport.sessionId;
           if (sid && transports[sid]) {
-            console.error(`MCP session closed: ${sid}`);
+            logInfo(`MCP session closed: ${sid}`);
             delete transports[sid];
           }
         };
@@ -656,11 +798,11 @@ app.post('/mcp', async (req, res) => {
       }
     } else if (!sessionId && isInitializeRequest(req.body)) {
       // Create new transport for initialization
-      console.error('Creating new transport for initialization');
+      logInfo('Creating new transport for initialization');
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sid) => {
-          console.error(`MCP session initialized: ${sid}`);
+          logInfo(`MCP session initialized: ${sid}`);
           transports[sid] = transport;
         }
       });
@@ -668,7 +810,7 @@ app.post('/mcp', async (req, res) => {
       transport.onclose = () => {
         const sid = transport.sessionId;
         if (sid && transports[sid]) {
-          console.error(`MCP session closed: ${sid}`);
+          logInfo(`MCP session closed: ${sid}`);
           delete transports[sid];
         }
       };
@@ -691,33 +833,20 @@ app.post('/mcp', async (req, res) => {
     // Use AsyncLocalStorage to maintain session context across async operations
     try {
       await sessionContext.run(sessionId || null, async () => {
-        console.error(`Setting request context for session: ${sessionId || 'null'}`);
-
         // Detect tool calls and notify WebSocket clients
-        if (req.body?.method === 'tools/call' && req.body?.params?.name) {
-          const toolName = req.body.params.name;
-          console.error(`MCP tool called: ${toolName} (session: ${sessionId || 'unknown'})`);
-          
-          // Send tool call notification to specific session's browser client
-          if (sessionId) {
-            const sent = sendToSession(sessionId, {
-              type: 'toolCall',
-              toolName: toolName,
-              timestamp: Date.now()
-            });
-            if (!sent) {
-              console.warn(`Tool call notification not sent - no browser connected for session: ${sessionId}`);
-            }
-          }
+        if (req.body?.method === 'tools/call' && req.body?.params?.name && sessionId) {
+          sendToSession(sessionId, {
+            type: 'toolCall',
+            toolName: req.body.params.name,
+            timestamp: Date.now()
+          });
         }
 
         // Handle the POST request - tool handlers will be called during this
         await transport.handleRequest(req, res, req.body);
-        
-        console.error(`Request handling complete for session: ${sessionId || 'null'}`);
       });
     } catch (error) {
-      console.error('Error handling MCP POST request:', error);
+      logError('Error handling MCP POST request:', error);
       
       if (!res.headersSent) {
         res.status(500).json({
@@ -731,7 +860,7 @@ app.post('/mcp', async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('Error in MCP POST handler (transport setup):', error);
+    logError('Error in MCP POST handler (transport setup):', error);
     
     if (!res.headersSent) {
       res.status(500).json({
@@ -761,15 +890,11 @@ app.get('/mcp', async (req, res) => {
     const transport = transports[sessionId];
     const lastEventId = req.headers['last-event-id'];
     
-    if (lastEventId) {
-      console.error(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
-    } else {
-      console.error(`Establishing new SSE stream for session ${sessionId}`);
-    }
+    logInfo(`SSE stream ${lastEventId ? 'reconnecting' : 'establishing'} for session ${sessionId}`);
     
     await transport.handleRequest(req, res);
   } catch (error) {
-    console.error('Error handling MCP GET request:', error);
+    logError('Error handling MCP GET request:', error);
     if (!res.headersSent) {
       res.status(500).send('Error processing SSE stream');
     }
@@ -788,11 +913,11 @@ app.delete('/mcp', async (req, res) => {
   }
 
   try {
-    console.error(`Received session termination request for session ${sessionId}`);
+    logInfo(`Session termination request for session ${sessionId}`);
     const transport = transports[sessionId];
     await transport.handleRequest(req, res);
   } catch (error) {
-    console.error('Error handling session termination:', error);
+    logError('Error handling session termination:', error);
     if (!res.headersSent) {
       res.status(500).send('Error processing session termination');
     }
@@ -825,18 +950,19 @@ if (!isStdioMode) {
 
   // Start HTTP server
   app.listen(MCP_PORT, () => {
-    // Use console.error for startup messages to avoid interfering with MCP protocol on stdout
-    console.error(`MCP Server listening on http://localhost:${MCP_PORT}/mcp`);
-    console.error(`Browser URL configured: ${BROWSER_URL}`);
+    // Use logError for startup messages to avoid interfering with MCP protocol on stdout
+    logError(`MCP Server listening on http://localhost:${MCP_PORT}/mcp`);
+    logError(`Browser URL configured: ${BROWSER_URL}`);
+    logInfo(`Log file: ${LOG_FILE}`);
     if (existsSync(distPath)) {
-      console.error(`Serving static files from ${distPath}`);
+      logError(`Serving static files from ${distPath}`);
     }
   });
 }
 
 // Handle server shutdown
 process.on('SIGINT', async () => {
-  console.warn('Shutting down servers...');
+  logWarn('Shutting down servers...');
   
   // Close all WebSocket connections
   wss.close();
@@ -846,7 +972,7 @@ process.on('SIGINT', async () => {
     try {
       await transports[sessionId].close();
     } catch (error) {
-      console.error(`Error closing transport for session ${sessionId}:`, error);
+      logError(`Error closing transport for session ${sessionId}:`, error);
     }
   }
   
