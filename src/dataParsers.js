@@ -5,6 +5,7 @@
  */
 
 import { getDataSource } from './dataSourceConfigs.js';
+import { enrichMaps } from './metadataEnricher.js';
 
 // Cache for parsed data (cleared on server restart)
 const dataCache = new Map();
@@ -111,7 +112,8 @@ function parseTSV(tsvData, config) {
     });
   }
   
-  return results;
+  // Enrich maps with computed metadata fields
+  return enrichMaps(results);
 }
 
 /**
