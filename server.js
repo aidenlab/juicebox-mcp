@@ -12,6 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { DATA_SOURCES, getDataSource, getAllSourceIds, isValidSource } from './src/dataSourceConfigs.js';
+import { parseDataSource } from './src/dataParsers.js';
+import { filterMaps } from './src/mapFilter.js';
+import { formatSearchResults, formatSearchResultsJSON } from './src/resultFormatter.js';
 
 // Parse command line arguments
 function parseCommandLineArgs() {
@@ -22,6 +26,8 @@ function parseCommandLineArgs() {
       args.browserUrl = process.argv[++i];
     } else if (arg.startsWith('--browser-url=')) {
       args.browserUrl = arg.split('=')[1];
+    } else if (arg === '--http' || arg === '--http-mode') {
+      args.httpMode = true;
     } else if (arg === '--help' || arg === '-h') {
       console.log(`
 Usage: node server.js [options]
@@ -29,12 +35,15 @@ Usage: node server.js [options]
 Options:
   --browser-url, -u <url>    Browser URL for the Juicebox app (e.g., https://your-app.netlify.app)
                              Overrides BROWSER_URL environment variable
+  --http, --http-mode        Force HTTP/SSE mode (for MCP Inspector and other HTTP clients)
   --help, -h                 Show this help message
 
 Environment Variables:
   BROWSER_URL                Browser URL (used if --browser-url not provided)
   MCP_PORT                   MCP server port (default: 3010)
   WS_PORT                    WebSocket server port (default: 3011)
+  MCP_TRANSPORT              Set to "http" or "sse" to force HTTP mode
+  FORCE_HTTP_MODE            Set to "true" to force HTTP mode
 
 Configuration Priority:
   1. Command line argument (--browser-url)
@@ -44,6 +53,7 @@ Configuration Priority:
 Examples:
   node server.js --browser-url https://my-app.netlify.app
   node server.js -u http://localhost:5173
+  node server.js --http  # Start in HTTP mode for MCP Inspector
       `);
       process.exit(0);
     }
@@ -59,6 +69,11 @@ const WS_PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT, 10) : 3011;
 // Priority: 1) Command line argument (--browser-url), 2) Environment variable (BROWSER_URL), 
 //           3) Default (localhost)
 const BROWSER_URL = cliArgs.browserUrl || process.env.BROWSER_URL || 'http://localhost:5173';
+
+// Force HTTP mode if requested via command line
+if (cliArgs.httpMode) {
+  process.env.MCP_TRANSPORT = 'http';
+}
 
 // File-based logger for diagnostics (visible even when running in Claude Desktop)
 // Default to temp directory to avoid cluttering user's home directory
@@ -269,6 +284,53 @@ function broadcastToClients(command) {
 const mcpServer = new McpServer({
   name: 'juicebox-server',
   version: '1.0.0'
+});
+
+// Register MCP resources for data source configurations
+mcpServer.setResourceRequestHandlers({
+  list: async () => {
+    return {
+      resources: [
+        {
+          uri: 'juicebox://datasource/4dn',
+          name: '4DN Contact Map Data Source',
+          description: '4DN Hi-C contact map data source configuration',
+          mimeType: 'application/json'
+        },
+        {
+          uri: 'juicebox://datasource/encode',
+          name: 'ENCODE Contact Map Data Source',
+          description: 'ENCODE Hi-C contact map data source configuration',
+          mimeType: 'application/json'
+        }
+      ]
+    };
+  },
+  read: async (request) => {
+    const { uri } = request.params;
+    
+    if (uri === 'juicebox://datasource/4dn') {
+      const config = getDataSource('4dn');
+      return {
+        contents: [{
+          uri,
+          mimeType: 'application/json',
+          text: JSON.stringify(config, null, 2)
+        }]
+      };
+    } else if (uri === 'juicebox://datasource/encode') {
+      const config = getDataSource('encode');
+      return {
+        contents: [{
+          uri,
+          mimeType: 'application/json',
+          text: JSON.stringify(config, null, 2)
+        }]
+      };
+    }
+    
+    throw new Error(`Unknown resource URI: ${uri}`);
+  }
 });
 
 // Helper function to convert hex color to RGB
@@ -696,6 +758,380 @@ mcpServer.registerTool(
   }
 );
 
+// Register tool: list_data_sources
+mcpServer.registerTool(
+  'list_data_sources',
+  {
+    title: 'List Data Sources',
+    description: 'List available Hi-C contact map data sources (4DN, ENCODE) with their metadata columns. Use this when users ask what data sources are available, what maps can be searched, or want to understand the available metadata.',
+    inputSchema: {}
+  },
+  async () => {
+    const sources = getAllSourceIds().map(sourceId => {
+      const config = getDataSource(sourceId);
+      return {
+        id: config.id,
+        name: config.name,
+        description: config.description,
+        columns: config.columns,
+        url: config.url
+      };
+    });
+    
+    const formatted = sources.map(source => {
+      return `${source.name} (${source.id}):\n` +
+        `  Description: ${source.description}\n` +
+        `  Data URL: ${source.url}\n` +
+        `  Available columns: ${source.columns.join(', ')}`;
+    }).join('\n\n');
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Available data sources:\n\n${formatted}`
+        }
+      ]
+    };
+  }
+);
+
+// Register tool: search_maps
+mcpServer.registerTool(
+  'search_maps',
+  {
+    title: 'Search Maps',
+    description: 'Search for Hi-C contact maps using natural language queries. Searches across all metadata fields (Assembly, Biosource, Biosample, Description, etc.). Use this when users want to find specific maps, e.g., "human hg38 maps", "mouse cell lines", "K562 cells", etc. NOTE: Results are limited to 50 by default. For statistical questions like "what assemblies are covered" or "how many maps are there", use get_data_source_statistics instead.',
+    inputSchema: {
+      source: z.string().optional().describe("Data source ID ('4dn', 'encode') or 'all' to search all sources. Default: 'all'"),
+      query: z.string().describe('Natural language search query (e.g., "human hg38", "mouse cells", "K562")'),
+      limit: z.number().int().positive().optional().describe('Maximum number of results to return (default: 50)')
+    }
+  },
+  async ({ source = 'all', query, limit = 50 }) => {
+    try {
+      if (!query || !query.trim()) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Error: Search query is required'
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      const sourceIds = source === 'all' ? getAllSourceIds() : [source];
+      
+      // Validate source IDs
+      for (const sourceId of sourceIds) {
+        if (!isValidSource(sourceId)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: Unknown data source "${sourceId}". Available sources: ${getAllSourceIds().join(', ')}`
+              }
+            ],
+            isError: true
+          };
+        }
+      }
+      
+      // Fetch and parse data from all specified sources
+      const allMaps = [];
+      for (const sourceId of sourceIds) {
+        try {
+          const maps = await parseDataSource(sourceId);
+          allMaps.push(...maps);
+        } catch (error) {
+          logError(`Error parsing data source ${sourceId}:`, error);
+          // Continue with other sources even if one fails
+        }
+      }
+      
+      if (allMaps.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `No data available from the specified source(s). This may be a temporary network issue.`
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Filter maps by query
+      const filteredMaps = filterMaps(allMaps, query);
+      
+      // Apply limit
+      const limitedMaps = filteredMaps.slice(0, limit);
+      
+      // Format results
+      const formattedTable = formatSearchResults(limitedMaps, query, source);
+      const jsonResults = formatSearchResultsJSON(limitedMaps);
+      
+      // Combine formatted table and JSON for Claude
+      const resultText = `${formattedTable}\n\n[Structured data for programmatic access]\n${jsonResults}`;
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: resultText
+          }
+        ]
+      };
+    } catch (error) {
+      logError('Error in search_maps tool:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error searching maps: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: get_data_source_statistics
+mcpServer.registerTool(
+  'get_data_source_statistics',
+  {
+    title: 'Get Data Source Statistics',
+    description: 'Get statistical overview of a data source including total maps, assemblies covered, and breakdowns by metadata fields. Use this when users ask "what assemblies are available", "how many maps are there", "what cell types are covered", etc. This returns unfiltered statistics without search limits.',
+    inputSchema: {
+      source: z.string().describe("Data source ID ('4dn' or 'encode')")
+    }
+  },
+  async ({ source }) => {
+    try {
+      if (!isValidSource(source)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: Unknown data source "${source}". Available sources: ${getAllSourceIds().join(', ')}`
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Fetch all maps without filtering
+      const maps = await parseDataSource(source);
+      
+      if (maps.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `No data available from ${source} data source. This may be a temporary network issue.`
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Calculate statistics
+      const stats = {
+        totalMaps: maps.length,
+        assemblies: {},
+        biosources: {},
+        labs: {},
+        experiments: {}
+      };
+      
+      maps.forEach(map => {
+        // Count by Assembly
+        const assembly = map.metadata?.Assembly || 'Unknown';
+        stats.assemblies[assembly] = (stats.assemblies[assembly] || 0) + 1;
+        
+        // Count by Biosource/Biosample
+        const biosource = map.metadata?.Biosource || map.metadata?.Biosample || 'Unknown';
+        stats.biosources[biosource] = (stats.biosources[biosource] || 0) + 1;
+        
+        // Count by Lab
+        const lab = map.metadata?.Lab || 'Unknown';
+        stats.labs[lab] = (stats.labs[lab] || 0) + 1;
+        
+        // Count by Experiment
+        const experiment = map.metadata?.Experiment || 'Unknown';
+        stats.experiments[experiment] = (stats.experiments[experiment] || 0) + 1;
+      });
+      
+      // Format output
+      const config = getDataSource(source);
+      let output = `${config.name} Data Source Statistics\n`;
+      output += `${'='.repeat(50)}\n\n`;
+      output += `Total Maps: ${stats.totalMaps}\n\n`;
+      
+      // Assemblies
+      output += `Assemblies Covered (${Object.keys(stats.assemblies).length} total):\n`;
+      const sortedAssemblies = Object.entries(stats.assemblies)
+        .sort((a, b) => b[1] - a[1]); // Sort by count
+      sortedAssemblies.forEach(([assembly, count]) => {
+        output += `  ${assembly}: ${count} maps\n`;
+      });
+      output += '\n';
+      
+      // Top Biosources
+      output += `Top Biosources/Biosamples (showing top 10):\n`;
+      const sortedBiosources = Object.entries(stats.biosources)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      sortedBiosources.forEach(([biosource, count]) => {
+        output += `  ${biosource}: ${count} maps\n`;
+      });
+      output += '\n';
+      
+      // Top Labs
+      output += `Top Labs (showing top 10):\n`;
+      const sortedLabs = Object.entries(stats.labs)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      sortedLabs.forEach(([lab, count]) => {
+        output += `  ${lab}: ${count} maps\n`;
+      });
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: output
+          }
+        ]
+      };
+    } catch (error) {
+      logError('Error in get_data_source_statistics tool:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error getting statistics: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: get_map_details
+mcpServer.registerTool(
+  'get_map_details',
+  {
+    title: 'Get Map Details',
+    description: 'Get detailed information about a specific Hi-C contact map. Use this when users want more information about a specific map from search results.',
+    inputSchema: {
+      source: z.string().describe("Data source ID ('4dn' or 'encode')"),
+      index: z.number().int().nonnegative().optional().describe('Index from search results (0-based). Required if url is not provided.'),
+      url: z.string().url().optional().describe('Direct URL to the map. Required if index is not provided.')
+    }
+  },
+  async ({ source, index, url }) => {
+    try {
+      if (!isValidSource(source)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: Unknown data source "${source}". Available sources: ${getAllSourceIds().join(', ')}`
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      if (index === undefined && !url) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Error: Either index or url must be provided'
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Fetch maps from source
+      const maps = await parseDataSource(source);
+      
+      let map = null;
+      if (url) {
+        // Find map by URL
+        map = maps.find(m => m.url === url);
+        if (!map) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Map with URL "${url}" not found in ${source} data source.`
+              }
+            ],
+            isError: true
+          };
+        }
+      } else {
+        // Get map by index
+        if (index >= maps.length) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Index ${index} is out of range. ${source} data source has ${maps.length} maps (indices 0-${maps.length - 1}).`
+              }
+            ],
+            isError: true
+          };
+        }
+        map = maps[index];
+      }
+      
+      // Format detailed information
+      const details = [
+        `Source: ${map.source}`,
+        `Name: ${map.name}`,
+        `URL: ${map.url}`,
+        '',
+        'Metadata:'
+      ];
+      
+      if (map.metadata) {
+        Object.entries(map.metadata).forEach(([key, value]) => {
+          details.push(`  ${key}: ${value || '(empty)'}`);
+        });
+      }
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: details.join('\n')
+          }
+        ]
+      };
+    } catch (error) {
+      logError('Error in get_map_details tool:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error getting map details: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
 // Set up Express HTTP server for MCP transport
 const app = express();
 app.use(express.json());
@@ -746,6 +1182,14 @@ if (isStdioMode) {
   logInfo(`Diagnostic log file: ${LOG_FILE}`);
 } else {
   logError('Running in HTTP/SSE mode');
+  logError(`MCP Server endpoint: http://localhost:${MCP_PORT}/mcp`);
+  logError(`For MCP Inspector:`);
+  logError(`  - Transport type: "streamable HTTP" (not "SSE")`);
+  logError(`  - Connection type: "direct"`);
+  logError(`  - Connection URL: http://localhost:${MCP_PORT}/mcp`);
+  logError(``);
+  logError(`Note: Server defaults to STDIO mode for Claude Desktop compatibility.`);
+  logError(`      Use --http flag or MCP_TRANSPORT=http to enable HTTP mode for testing.`);
   logInfo(`Diagnostic log file: ${LOG_FILE}`);
 }
 

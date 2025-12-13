@@ -211,8 +211,22 @@ const forceHttpMode = process.env.MCP_TRANSPORT === 'http' ||
 const isStdioMode = !forceHttpMode && !process.stdin.isTTY;
 ```
 
-- **STDIO mode**: `stdin` is not a TTY (running as subprocess)
-- **HTTP mode**: `stdin` is a TTY (running manually) OR forced via environment variable
+- **STDIO mode**: `stdin` is not a TTY (running as subprocess) - **This is the default**
+- **HTTP mode**: `stdin` is a TTY (running manually) OR forced via `--http` flag or environment variable
+
+### Important: Default Behavior
+
+**The server defaults to STDIO mode**, not HTTP mode. This is intentional:
+
+1. **Claude Desktop Integration**: When Claude Desktop spawns the server as a subprocess, stdin/stdout are piped (not a TTY), so STDIO mode is automatically detected.
+
+2. **MCPB Bundling**: MCPB bundles expect STDIO mode, so defaulting to STDIO ensures correct behavior when bundled.
+
+3. **Testing**: For testing with MCP Inspector or other HTTP clients, you **must explicitly enable HTTP mode** using:
+   - Command line: `node server.js --http`
+   - Environment variable: `MCP_TRANSPORT=http node server.js`
+
+**Do not rely on TTY detection alone** - always use the `--http` flag when testing with HTTP clients to ensure consistent behavior across different environments.
 
 ## Summary
 
