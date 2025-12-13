@@ -801,7 +801,7 @@ mcpServer.registerTool(
   'search_maps',
   {
     title: 'Search Maps',
-    description: 'Search for Hi-C contact maps using natural language queries. Searches across all metadata fields (Assembly, Biosource, Biosample, Description, etc.). Use this when users want to find specific maps, e.g., "human hg38 maps", "mouse cell lines", "K562 cells", etc.',
+    description: 'Search for Hi-C contact maps using natural language queries. Searches across all metadata fields (Assembly, Biosource, Biosample, Description, etc.). Use this when users want to find specific maps, e.g., "human hg38 maps", "mouse cell lines", "K562 cells", etc. NOTE: Results are limited to 50 by default. For statistical questions like "what assemblies are covered" or "how many maps are there", use get_data_source_statistics instead.',
     inputSchema: {
       source: z.string().optional().describe("Data source ID ('4dn', 'encode') or 'all' to search all sources. Default: 'all'"),
       query: z.string().describe('Natural language search query (e.g., "human hg38", "mouse cells", "K562")'),
@@ -891,6 +891,129 @@ mcpServer.registerTool(
           {
             type: 'text',
             text: `Error searching maps: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: get_data_source_statistics
+mcpServer.registerTool(
+  'get_data_source_statistics',
+  {
+    title: 'Get Data Source Statistics',
+    description: 'Get statistical overview of a data source including total maps, assemblies covered, and breakdowns by metadata fields. Use this when users ask "what assemblies are available", "how many maps are there", "what cell types are covered", etc. This returns unfiltered statistics without search limits.',
+    inputSchema: {
+      source: z.string().describe("Data source ID ('4dn' or 'encode')")
+    }
+  },
+  async ({ source }) => {
+    try {
+      if (!isValidSource(source)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: Unknown data source "${source}". Available sources: ${getAllSourceIds().join(', ')}`
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Fetch all maps without filtering
+      const maps = await parseDataSource(source);
+      
+      if (maps.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `No data available from ${source} data source. This may be a temporary network issue.`
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Calculate statistics
+      const stats = {
+        totalMaps: maps.length,
+        assemblies: {},
+        biosources: {},
+        labs: {},
+        experiments: {}
+      };
+      
+      maps.forEach(map => {
+        // Count by Assembly
+        const assembly = map.metadata?.Assembly || 'Unknown';
+        stats.assemblies[assembly] = (stats.assemblies[assembly] || 0) + 1;
+        
+        // Count by Biosource/Biosample
+        const biosource = map.metadata?.Biosource || map.metadata?.Biosample || 'Unknown';
+        stats.biosources[biosource] = (stats.biosources[biosource] || 0) + 1;
+        
+        // Count by Lab
+        const lab = map.metadata?.Lab || 'Unknown';
+        stats.labs[lab] = (stats.labs[lab] || 0) + 1;
+        
+        // Count by Experiment
+        const experiment = map.metadata?.Experiment || 'Unknown';
+        stats.experiments[experiment] = (stats.experiments[experiment] || 0) + 1;
+      });
+      
+      // Format output
+      const config = getDataSource(source);
+      let output = `${config.name} Data Source Statistics\n`;
+      output += `${'='.repeat(50)}\n\n`;
+      output += `Total Maps: ${stats.totalMaps}\n\n`;
+      
+      // Assemblies
+      output += `Assemblies Covered (${Object.keys(stats.assemblies).length} total):\n`;
+      const sortedAssemblies = Object.entries(stats.assemblies)
+        .sort((a, b) => b[1] - a[1]); // Sort by count
+      sortedAssemblies.forEach(([assembly, count]) => {
+        output += `  ${assembly}: ${count} maps\n`;
+      });
+      output += '\n';
+      
+      // Top Biosources
+      output += `Top Biosources/Biosamples (showing top 10):\n`;
+      const sortedBiosources = Object.entries(stats.biosources)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      sortedBiosources.forEach(([biosource, count]) => {
+        output += `  ${biosource}: ${count} maps\n`;
+      });
+      output += '\n';
+      
+      // Top Labs
+      output += `Top Labs (showing top 10):\n`;
+      const sortedLabs = Object.entries(stats.labs)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      sortedLabs.forEach(([lab, count]) => {
+        output += `  ${lab}: ${count} maps\n`;
+      });
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: output
+          }
+        ]
+      };
+    } catch (error) {
+      logError('Error in get_data_source_statistics tool:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error getting statistics: ${error.message}`
           }
         ],
         isError: true
