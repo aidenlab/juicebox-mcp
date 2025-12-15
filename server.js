@@ -416,57 +416,62 @@ mcpServer.registerTool(
   'load_session',
   {
     title: 'Load Session',
-    description: 'Load a Juicebox session from a URL or JSON object',
+    description: 'Load a Juicebox session from JSON data, attached file, or remote URL. Sessions restore browser configurations, loci, tracks, and visualization state. Supports three input methods: (1) direct JSON paste, (2) file attachment, (3) URL-based loading from remote sources (Dropbox, AWS, etc.).',
     inputSchema: {
-      sessionUrl: z.string().url().optional().describe('URL to a session JSON file'),
-      sessionJson: z.string().optional().describe('Session JSON as a string'),
-      sessionObject: z.record(z.any()).optional().describe('Session object')
+      sessionData: z.string().optional().describe('JSON string of session data (use when pasting JSON directly into chat)'),
+      sessionUrl: z.string().url().optional().describe('URL to fetch session JSON from remote source (e.g., Dropbox, AWS S3, GitHub raw file URL)'),
+      fileContent: z.string().optional().describe('Content of attached session file (use when user attaches a .json file to the chat)')
     }
   },
-  async ({ sessionUrl, sessionJson, sessionObject }) => {
-    if (!sessionUrl && !sessionJson && !sessionObject) {
+  async ({ sessionData, sessionUrl, fileContent }) => {
+    // Determine source: fileContent > sessionData > sessionUrl
+    let parsedSession;
+    
+    try {
+      if (fileContent) {
+        // Handle attached file
+        parsedSession = JSON.parse(fileContent);
+      } else if (sessionData) {
+        // Handle direct JSON paste
+        parsedSession = JSON.parse(sessionData);
+      } else if (sessionUrl) {
+        // Fetch from remote URL (Dropbox, AWS, GitHub, etc.)
+        const response = await fetch(sessionUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch session from URL: ${response.status} ${response.statusText}`);
+        }
+        parsedSession = await response.json();
+      } else {
+        throw new Error('No session data provided. Provide sessionData (for pasted JSON), sessionUrl (for remote URLs like Dropbox/AWS), or attach a file.');
+      }
+      
+      // Validate session structure
+      if (!parsedSession.browsers && !parsedSession.url) {
+        throw new Error('Invalid session format: must contain "browsers" array or browser config');
+      }
+      
+      // Route to browser
+      routeToCurrentSession({
+        type: 'loadSession',
+        sessionData: parsedSession
+      });
+      
+      const browserCount = parsedSession.browsers ? parsedSession.browsers.length : 1;
       return {
-        content: [
-          {
-            type: 'text',
-            text: 'Error: Must provide either sessionUrl, sessionJson, or sessionObject'
-          }
-        ],
+        content: [{
+          type: 'text',
+          text: `Session loaded successfully. Restored ${browserCount} browser(s).`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Error loading session: ${error.message}`
+        }],
         isError: true
       };
     }
-
-    let sessionData = sessionObject;
-    if (sessionJson) {
-      try {
-        sessionData = JSON.parse(sessionJson);
-      } catch (e) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error parsing session JSON: ${e.message}`
-            }
-          ],
-          isError: true
-        };
-      }
-    }
-
-    routeToCurrentSession({
-      type: 'loadSession',
-      sessionUrl: sessionUrl,
-      sessionData: sessionData
-    });
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Loading session${sessionUrl ? ` from ${sessionUrl}` : ''}`
-        }
-      ]
-    };
   }
 );
 
