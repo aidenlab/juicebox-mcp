@@ -90,9 +90,11 @@ class InteractionHandler {
         const eventData = {
             state: this.browser.state,
             resolutionChanged,
-            chrChanged,
-            ...(dragging && { dragging })
+            chrChanged
         };
+        if (dragging) {
+            eventData.dragging = dragging;
+        }
 
         await this.browser.update();
         this.browser.notifyLocusChange(eventData);
@@ -516,8 +518,11 @@ class InteractionHandler {
      * @returns {Promise<void>}
      */
     async parseGotoInput(input) {
-        const loci = input.trim().split(' ');
+        // Normalize natural language input first
+        const normalized = this.normalizeLocusInput(input);
+        const loci = normalized.trim().split(' ');
 
+        // Try parsing first locus, fall back to gene lookup if it fails
         let xLocus = this.parseLocusString(loci[0]) || await this.browser.lookupFeatureOrGene(loci[0]);
 
         if (!xLocus) {
@@ -526,6 +531,7 @@ class InteractionHandler {
             return;
         }
 
+        // If only one locus specified, apply to both axes (chr1 and chr2)
         let yLocus = loci[1] ? this.parseLocusString(loci[1]) : { ...xLocus };
         if (!yLocus) {
             yLocus = { ...xLocus };
@@ -539,7 +545,241 @@ class InteractionHandler {
     }
 
     /**
+     * Parse combined map loading and locus specification from natural language.
+     * Extracts map criteria (lab, cell type, source) and locus from combined commands.
+     * 
+     * Examples:
+     *   "load a map from lab X for cell type Y at locus Z"
+     *   "show me maps from 4DN for K562 cells at chr1:1000-2000"
+     *   "load map from ENCODE at BRCA1"
+     * 
+     * @param {string} input - Combined natural language command
+     * @returns {Object} - Parsed result with {mapCriteria: {...}, locus: string|null}
+     */
+    parseMapAndLocusCommand(input) {
+        if (!input || typeof input !== 'string') {
+            return { mapCriteria: null, locus: null };
+        }
+
+        const normalized = input.trim().toLowerCase();
+        let mapCriteria = {};
+        let locus = null;
+
+        // Common patterns for locus specification
+        const locusPatterns = [
+            /(?:at|to|showing|viewing|displaying)\s+(?:locus|position|region|gene|chromosome|chr)\s+(.+?)(?:\s|$)/i,
+            /(?:at|to)\s+(chr\d+[:\d\-\s,KMkm]*|chromosome\s+\d+[:\d\-\s,KMkm]*|[a-z0-9]+:[0-9,\-KMkm]+)/i,
+            /(?:at|to)\s+([a-z]{2,}[a-z0-9]*)/i, // Gene names (BRCA1, TP53, etc.)
+        ];
+
+        // Try to extract locus first
+        for (const pattern of locusPatterns) {
+            const match = normalized.match(pattern);
+            if (match) {
+                locus = match[1].trim();
+                // Remove locus from input for map criteria extraction
+                input = input.replace(match[0], '').trim();
+                break;
+            }
+        }
+
+        // If no explicit locus pattern found, check if the end looks like a locus
+        if (!locus) {
+            const locusEndPattern = /(chr\d+[:\d\-\s,KMkm]+|[a-z]{2,}[a-z0-9]*:[0-9,\-KMkm]+)$/i;
+            const match = input.match(locusEndPattern);
+            if (match) {
+                locus = match[1].trim();
+                input = input.replace(match[0], '').trim();
+            }
+        }
+
+        // Extract map criteria patterns
+        // Lab pattern: "from lab X", "lab X", "by lab X"
+        const labPattern = /(?:from|by)\s+lab\s+([^\s]+(?:\s+[^\s]+)*?)(?:\s|$|for|at|to)/i;
+        const labMatch = input.match(labPattern);
+        if (labMatch) {
+            mapCriteria.lab = labMatch[1].trim();
+        }
+
+        // Cell type pattern: "for cell type X", "for X cells", "cell type X", "X cells"
+        const cellPattern = /(?:for|with)\s+(?:cell\s+type\s+)?([^\s]+(?:\s+[^\s]+)*?)\s+(?:cells?|cell\s+type)(?:\s|$|at|to|from)/i;
+        const cellMatch = input.match(cellPattern);
+        if (cellMatch) {
+            mapCriteria.cellType = cellMatch[1].trim();
+        } else {
+            // Try simpler pattern: "for K562", "K562 cells"
+            const simpleCellPattern = /(?:for|with)\s+([a-z0-9]+(?:\s+[a-z0-9]+)*?)\s+(?:cells?)(?:\s|$|at|to|from)/i;
+            const simpleMatch = input.match(simpleCellPattern);
+            if (simpleMatch) {
+                mapCriteria.cellType = simpleMatch[1].trim();
+            }
+        }
+
+        // Source pattern: "from 4DN", "from ENCODE", "4DN maps", "ENCODE data"
+        const sourcePattern = /(?:from|in)\s+(4dn|encode|all)(?:\s|$|for|at|to)/i;
+        const sourceMatch = input.match(sourcePattern);
+        if (sourceMatch) {
+            mapCriteria.source = sourceMatch[1].toLowerCase();
+        }
+
+        // Biosource/Biosample pattern: "biosource X", "biosample Y"
+        const biosourcePattern = /(?:biosource|biosample)\s+([^\s]+(?:\s+[^\s]+)*?)(?:\s|$|for|at|to)/i;
+        const biosourceMatch = input.match(biosourcePattern);
+        if (biosourceMatch) {
+            mapCriteria.biosource = biosourceMatch[1].trim();
+        }
+
+        // Assembly pattern: "hg38", "mm10", "assembly X"
+        const assemblyPattern = /(?:assembly\s+)?(hg\d+|mm\d+|grch\d+)(?:\s|$|for|at|to)/i;
+        const assemblyMatch = input.match(assemblyPattern);
+        if (assemblyMatch) {
+            mapCriteria.assembly = assemblyMatch[1].trim();
+        }
+
+        // Build search query from extracted criteria
+        if (Object.keys(mapCriteria).length > 0) {
+            const queryParts = [];
+            if (mapCriteria.lab) queryParts.push(mapCriteria.lab);
+            if (mapCriteria.cellType) queryParts.push(mapCriteria.cellType);
+            if (mapCriteria.biosource) queryParts.push(mapCriteria.biosource);
+            if (mapCriteria.assembly) queryParts.push(mapCriteria.assembly);
+            mapCriteria.query = queryParts.join(' ');
+        }
+
+        return {
+            mapCriteria: Object.keys(mapCriteria).length > 0 ? mapCriteria : null,
+            locus: locus || null
+        };
+    }
+
+    /**
+     * Normalize natural language locus input to standard format.
+     * Handles various natural language patterns and converts them to "chr:start-end" format.
+     * 
+     * Examples:
+     *   "chromosome 1 from 1000 to 2000" -> "chr1:1000-2000"
+     *   "chr1 1000-2000" -> "chr1:1000-2000"
+     *   "position 1000 on chromosome 1" -> "chr1:1000-2000" (defaults to 1MB window)
+     *   "chr1 starting at 1000 ending at 2000" -> "chr1:1000-2000"
+     * 
+     * @param {string} input - Natural language or standard locus string
+     * @returns {string} - Normalized locus string in format "chr:start-end" or "chr"
+     */
+    normalizeLocusInput(input) {
+        if (!input || typeof input !== 'string') {
+            return input;
+        }
+
+        const normalized = input.trim();
+
+        // If already in standard format (contains ":"), return as-is after basic cleanup
+        if (normalized.includes(':')) {
+            return normalized;
+        }
+
+        // Pattern 1: "chromosome X from Y to Z" or "chr X from Y to Z"
+        // Enhanced to support natural language: "10 megabases", "25 kilobases", etc.
+        let match = normalized.match(/chromosome\s+(\w+)\s+from\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)\s+to\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)/i) ||
+                    normalized.match(/chr\s*(\w+)\s+from\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)\s+to\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)/i);
+        if (match) {
+            const chr = match[1].startsWith('chr') ? match[1] : `chr${match[1]}`;
+            const start = this._parseNumber(match[2]);
+            const end = this._parseNumber(match[3]);
+            return `${chr}:${start}-${end}`;
+        }
+
+        // Pattern 2: "chr X Y-Z" or "chromosome X Y-Z"
+        // Enhanced to support natural language units
+        match = normalized.match(/(?:chromosome|chr)\s*(\w+)\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)\s*[-–—]\s*([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)/i);
+        if (match) {
+            const chr = match[1].startsWith('chr') ? match[1] : `chr${match[1]}`;
+            const start = this._parseNumber(match[2]);
+            const end = this._parseNumber(match[3]);
+            return `${chr}:${start}-${end}`;
+        }
+
+        // Pattern 3: "position X on chromosome Y" or "chr Y position X"
+        // Enhanced to support natural language units
+        match = normalized.match(/position\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)\s+on\s+(?:chromosome|chr)\s*(\w+)/i) ||
+                normalized.match(/(?:chromosome|chr)\s*(\w+)\s+position\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)/i);
+        if (match) {
+            const chr = (match[1] || match[2]).startsWith('chr') ? (match[1] || match[2]) : `chr${match[1] || match[2]}`;
+            const position = this._parseNumber(match[2] || match[3]);
+            // Default to 1MB window around the position
+            const windowSize = 500000;
+            const start = Math.max(0, position - windowSize);
+            const end = position + windowSize;
+            return `${chr}:${start}-${end}`;
+        }
+
+        // Pattern 4: "chr X starting at Y ending at Z"
+        // Enhanced to support natural language units
+        match = normalized.match(/(?:chromosome|chr)\s*(\w+)\s+starting\s+at\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)\s+ending\s+at\s+([\d,KMkm\s]+(?:megabase|megabases|kilobase|kilobases|mb|kb)?)/i);
+        if (match) {
+            const chr = match[1].startsWith('chr') ? match[1] : `chr${match[1]}`;
+            const start = this._parseNumber(match[2]);
+            const end = this._parseNumber(match[3]);
+            return `${chr}:${start}-${end}`;
+        }
+
+        // Pattern 5: Just chromosome name (e.g., "chr1", "chromosome 1")
+        match = normalized.match(/(?:chromosome\s+)?(\w+)/i);
+        if (match) {
+            const chr = match[1].startsWith('chr') ? match[1] : `chr${match[1]}`;
+            // Return just chromosome name for whole chromosome view
+            return chr;
+        }
+
+        // If no pattern matches, return as-is (might be gene name or already in correct format)
+        return normalized;
+    }
+
+    /**
+     * Parse number string with support for K, M suffixes, commas, and natural language terms.
+     * 
+     * @param {string} numStr - Number string (e.g., "1,000", "1M", "1000K", "1e6", "10 megabases", "25 kilobases")
+     * @returns {number} - Parsed number
+     */
+    _parseNumber(numStr) {
+        if (!numStr) return 0;
+        
+        // Remove commas
+        let cleaned = numStr.replace(/,/g, '').trim().toLowerCase();
+        
+        // Handle natural language terms: "megabase", "megabases", "mb", "kilobase", "kilobases", "kb"
+        // Pattern: "10 megabases" or "10 megabase" or "10 mb" or "10mb"
+        const megabasePattern = /(\d+(?:\.\d+)?)\s*(?:megabase|megabases|mb)\b/i;
+        const kilobasePattern = /(\d+(?:\.\d+)?)\s*(?:kilobase|kilobases|kb)\b/i;
+        
+        const mbMatch = cleaned.match(megabasePattern);
+        if (mbMatch) {
+            return Math.round(parseFloat(mbMatch[1]) * 1000000);
+        }
+        
+        const kbMatch = cleaned.match(kilobasePattern);
+        if (kbMatch) {
+            return Math.round(parseFloat(kbMatch[1]) * 1000);
+        }
+        
+        // Handle K/M suffixes (must come after word patterns to avoid conflicts)
+        if (cleaned.endsWith('k') && !cleaned.endsWith('kb')) {
+            return parseInt(cleaned.slice(0, -1)) * 1000;
+        }
+        if (cleaned.endsWith('m') && !cleaned.endsWith('mb')) {
+            return parseInt(cleaned.slice(0, -1)) * 1000000;
+        }
+        
+        // Handle scientific notation
+        if (cleaned.includes('e')) {
+            return parseFloat(cleaned);
+        }
+        
+        return parseInt(cleaned, 10);
+    }
+
+    /**
      * Parse a locus string into a locus object.
+     * Enhanced to handle K/M suffixes and various number formats.
      * 
      * @param {string} locus - Locus string in format "chr:start-end" or "chr"
      * @returns {Object|undefined} - Locus object {chr, start, end, wholeChr?} or undefined if invalid
@@ -562,14 +802,74 @@ class InteractionHandler {
             locusObject.start = 0;
             locusObject.end = chromosome.size;
         } else {
-            const [startStr, endStr] = range.split('-').map(part => part.replace(/,/g, ''));
+            const [startStr, endStr] = range.split('-').map(part => part.replace(/,/g, '').trim());
+
+            // Parse numbers with support for K/M suffixes
+            const startNum = startStr ? this._parseNumber(startStr) : undefined;
+            const endNum = endStr ? this._parseNumber(endStr) : undefined;
 
             // Internally, loci are 0-based.
-            locusObject.start = isNaN(startStr) ? undefined : parseInt(startStr, 10) - 1;
-            locusObject.end = isNaN(endStr) ? undefined : parseInt(endStr, 10);
+            locusObject.start = (startNum !== undefined && !isNaN(startNum)) ? startNum - 1 : undefined;
+            locusObject.end = (endNum !== undefined && !isNaN(endNum)) ? endNum : undefined;
         }
 
         return locusObject;
+    }
+
+    /**
+     * Parse locus input flexibly, accepting both string and object formats.
+     * This is the main entry point for MCP server commands and other programmatic access.
+     * 
+     * Supports:
+     * - String input (natural language or standard format): "chr1:1000-2000", "BRCA1", "chromosome 1 from 1000 to 2000"
+     * - Object input: {chr: "chr1", start: 1000, end: 2000}
+     * - Single chromosome applies to both axes (chr1 and chr2)
+     * 
+     * @param {string|Object} input - Locus input (string or object)
+     * @returns {Promise<void>}
+     */
+    async parseLocusInputFlexible(input) {
+        // Handle structured object input
+        if (typeof input === 'object' && input !== null) {
+            if (input.chr) {
+                // Single chromosome specified - apply to both axes
+                const xLocus = {
+                    chr: input.chr,
+                    start: input.start !== undefined ? input.start : 0,
+                    end: input.end !== undefined ? input.end : undefined,
+                    wholeChr: input.start === undefined && input.end === undefined
+                };
+                
+                // If whole chromosome, get the size
+                if (xLocus.wholeChr) {
+                    const chromosome = this.browser.genome.getChromosome(xLocus.chr);
+                    if (chromosome) {
+                        xLocus.start = 0;
+                        xLocus.end = chromosome.size;
+                    }
+                }
+                
+                const yLocus = { ...xLocus };
+                
+                if (xLocus.wholeChr) {
+                    await this.setChromosomes(xLocus, yLocus);
+                } else {
+                    await this.goto(xLocus.chr, xLocus.start, xLocus.end, yLocus.chr, yLocus.start, yLocus.end);
+                }
+                return;
+            }
+        }
+
+        // Handle string input - normalize natural language first
+        if (typeof input === 'string') {
+            const normalized = this.normalizeLocusInput(input);
+            await this.parseGotoInput(normalized);
+            return;
+        }
+
+        // Invalid input format
+        console.error('Invalid locus input format. Expected string or object with chr property.');
+        throw new Error('Invalid locus input format');
     }
 }
 

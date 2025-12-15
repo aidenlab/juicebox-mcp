@@ -67,6 +67,9 @@ export class Application {
       }],
       ['setBackgroundColor', (command) => {
         this._setBackgroundColor(command);
+      }],
+      ['gotoLocus', async (command) => {
+        await this._gotoLocus(command);
       }]
     ]);
   }
@@ -296,6 +299,31 @@ export class Application {
       console.log('Zoomed out');
     } catch (error) {
       console.error('Error zooming out:', error);
+    }
+  }
+
+  /**
+   * Navigate to a specific genomic locus
+   */
+  async _gotoLocus(command) {
+    if (!this.browser) {
+      console.error('Browser not initialized');
+      return;
+    }
+
+    try {
+      const locus = command.locus;
+      
+      if (!locus) {
+        console.error('No locus specified');
+        return;
+      }
+
+      // Use parseLocusInputFlexible which handles both string and object formats
+      await this.browser.parseLocusInputFlexible(locus);
+      console.log(`Navigated to locus: ${typeof locus === 'string' ? locus : JSON.stringify(locus)}`);
+    } catch (error) {
+      console.error('Error navigating to locus:', error);
     }
   }
 

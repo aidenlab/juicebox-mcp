@@ -661,6 +661,30 @@ class HICBrowser {
         return this.interactions.parseGotoInput(input);
     }
 
+    /**
+     * Parse locus input flexibly, accepting both string and object formats.
+     * This is the recommended entry point for MCP server commands.
+     * Supports natural language, gene names, standard format, and structured objects.
+     * 
+     * @param {string|Object} input - Locus input (string or object with chr, start, end properties)
+     * @returns {Promise<void>}
+     */
+    async parseLocusInputFlexible(input) {
+        return this.interactions.parseLocusInputFlexible(input);
+    }
+
+    /**
+     * Parse combined map loading and locus specification from natural language.
+     * Extracts map criteria (lab, cell type, source) and locus from combined commands.
+     * Useful for commands like "load a map from lab X for cell type Y at locus Z".
+     * 
+     * @param {string} input - Combined natural language command
+     * @returns {Object} - Parsed result with {mapCriteria: {...}, locus: string|null}
+     */
+    parseMapAndLocusCommand(input) {
+        return this.interactions.parseMapAndLocusCommand(input);
+    }
+
     parseLocusString(locus) {
         return this.interactions.parseLocusString(locus);
     }

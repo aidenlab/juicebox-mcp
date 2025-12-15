@@ -796,6 +796,66 @@ mcpServer.registerTool(
   }
 );
 
+// Register tool: goto_locus
+mcpServer.registerTool(
+  'goto_locus',
+  {
+    title: 'Navigate to Locus',
+    description: 'Navigate to a specific genomic locus in the currently loaded map. Supports natural language, gene names, standard format, and structured objects. Examples: "chr1:1000-2000", "BRCA1", "chromosome 1 from 1000 to 2000", or {chr: "chr1", start: 1000, end: 2000}. When a single chromosome is specified, it applies to both axes of the Hi-C contact map.',
+    inputSchema: {
+      locus: z.union([
+        z.string().describe('Locus specification as string (natural language, standard format, or gene name). Examples: "chr1:1000-2000", "BRCA1", "chromosome 1 from 1000 to 2000"'),
+        z.object({
+          chr: z.string().describe('Chromosome name (e.g., "chr1")'),
+          start: z.number().optional().describe('Start position in base pairs (1-based)'),
+          end: z.number().optional().describe('End position in base pairs (1-based)')
+        }).describe('Locus specification as structured object')
+      ]).describe('Locus to navigate to. Can be a string (natural language or standard format) or an object with chr, start, and end properties.')
+    }
+  },
+  async ({ locus }) => {
+    if (!locus) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Error: Locus specification is required'
+          }
+        ],
+        isError: true
+      };
+    }
+
+    routeToCurrentSession({
+      type: 'gotoLocus',
+      locus: locus
+    });
+
+    // Format locus string for display
+    let locusDisplay;
+    if (typeof locus === 'string') {
+      locusDisplay = locus;
+    } else if (typeof locus === 'object' && locus.chr) {
+      if (locus.start !== undefined && locus.end !== undefined) {
+        locusDisplay = `${locus.chr}:${locus.start}-${locus.end}`;
+      } else {
+        locusDisplay = locus.chr;
+      }
+    } else {
+      locusDisplay = JSON.stringify(locus);
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Navigating to locus: ${locusDisplay}`
+        }
+      ]
+    };
+  }
+);
+
 // Register tool: search_maps
 mcpServer.registerTool(
   'search_maps',
