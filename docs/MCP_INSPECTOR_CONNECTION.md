@@ -48,6 +48,39 @@ The MCP Inspector UI distinguishes between two transport types:
 
 ## Connection Instructions
 
+### Step 0: Start the MCP Inspector
+
+The MCP Inspector is a web-based tool for testing and debugging MCP servers. To start it:
+
+**Option 1: Using npx (recommended, no installation required)**
+
+Open your terminal and run:
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+
+This will:
+- Start the inspector server on an available port (default: 8080)
+- Automatically open your browser to the inspector interface
+- Display the URL in the terminal (typically `http://localhost:8080`)
+
+**Option 2: Install globally**
+
+If you prefer to install it globally:
+
+```bash
+npm install -g @modelcontextprotocol/inspector
+```
+
+Then start it with:
+
+```bash
+mcp-inspector
+```
+
+Once started, the MCP Inspector UI will load in your browser, showing connection configuration options.
+
 ### Step 1: Start the Server in HTTP Mode
 
 **You must explicitly enable HTTP mode** - the server defaults to STDIO mode for Claude Desktop compatibility.

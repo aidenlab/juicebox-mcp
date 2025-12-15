@@ -435,12 +435,41 @@ mcpServer.registerTool(
         // Handle direct JSON paste
         parsedSession = JSON.parse(sessionData);
       } else if (sessionUrl) {
+        // Normalize Dropbox URLs: convert preview links (dl=0) to download links (dl=1)
+        let normalizedUrl = sessionUrl;
+        if (sessionUrl.includes('dropbox.com') && sessionUrl.includes('dl=0')) {
+          normalizedUrl = sessionUrl.replace('dl=0', 'dl=1');
+          logInfo(`Normalized Dropbox URL: ${normalizedUrl}`);
+        }
+        
         // Fetch from remote URL (Dropbox, AWS, GitHub, etc.)
-        const response = await fetch(sessionUrl);
+        logInfo(`Fetching session from URL: ${normalizedUrl}`);
+        const response = await fetch(normalizedUrl);
+        
         if (!response.ok) {
           throw new Error(`Failed to fetch session from URL: ${response.status} ${response.statusText}`);
         }
-        parsedSession = await response.json();
+        
+        // Check Content-Type to ensure we're getting JSON
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json') && !contentType.includes('text/plain')) {
+          logWarn(`Unexpected Content-Type: ${contentType}. Attempting to parse as JSON anyway.`);
+        }
+        
+        // Get response text first to check if it's actually JSON
+        const responseText = await response.text();
+        
+        // Check if response looks like HTML (common with Dropbox preview links)
+        if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+          throw new Error('Received HTML instead of JSON. The URL may be a preview link. For Dropbox links, ensure dl=1 parameter is set, or use a direct download link.');
+        }
+        
+        try {
+          parsedSession = JSON.parse(responseText);
+        } catch (parseError) {
+          logError(`Failed to parse JSON from URL. Response preview: ${responseText.substring(0, 200)}...`);
+          throw new Error(`Invalid JSON received from URL: ${parseError.message}. The URL may not point to a valid JSON file.`);
+        }
       } else {
         throw new Error('No session data provided. Provide sessionData (for pasted JSON), sessionUrl (for remote URLs like Dropbox/AWS), or attach a file.');
       }
@@ -464,6 +493,10 @@ mcpServer.registerTool(
         }]
       };
     } catch (error) {
+      logError(`Error loading session: ${error.message}`);
+      if (error.stack) {
+        logError(`Stack trace: ${error.stack}`);
+      }
       return {
         content: [{
           type: 'text',
