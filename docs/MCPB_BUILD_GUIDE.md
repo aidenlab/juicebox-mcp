@@ -278,9 +278,6 @@ juicebox-mcp/
 ```
 
 ## Additional Resources
-
-- [MCP Package Implementation Plan](../docs/MCP_IMPLEMENTATION_PLAN.md) - High-level architecture
-- [MCP Server Verbs](../docs/MCP_SERVER_VERBS.md) - Available tool commands
 - [Netlify Setup Guide](../docs/NETLIFY_SETUP.md) - Frontend deployment
 
 ## Summary
