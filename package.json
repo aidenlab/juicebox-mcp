@@ -2,20 +2,6 @@
   "name": "juicebox-mcp",
   "version": "2.5.3",
   "type": "module",
-  "main": "./dist/juicebox.esm.js",
-  "module": "./dist/juicebox.esm.js",
-  "exports": {
-    ".": {
-      "import": "./dist/juicebox.esm.js",
-      "default": "./dist/juicebox.esm.js"
-    },
-    "./dist/juicebox.esm.js": "./dist/juicebox.esm.js",
-    "./dist/juicebox.min.js": "./dist/juicebox.min.js",
-    "./dist/css/juicebox.css": "./dist/css/juicebox.css"
-  },
-  "files": [
-    "dist/**"
-  ],
   "author": {
     "name": "Jim Robinson"
   },
@@ -30,20 +16,22 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "preview": "vite preview",
+
     "build:netlify": "vite build --config vite.config.netlify.js",
+    "preview:netlify": "vite preview --config vite.config.netlify.js",
+
     "build:mcpb": "node esbuild.config.js && node build-mcpb.js",
     "build:mcpb:bundle": "node esbuild.config.js",
     "build:mcpb:package": "node build-mcpb.js",
-    "preview": "vite preview",
-    "preview:netlify": "vite preview --config vite.config.netlify.js",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run build",
+    "start:mcpb": "node dist/juicebox-mcp-server.js",
+    
+    "mcp:server": "node server.js",
+
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run",
-    "start": "node server.js",
-    "start:mcpb": "node dist/juicebox-mcp-server.js",
-    "mcp:server": "node server.js"
+    "test:run": "vitest run"
+
   },
   "keywords": [
     "conformation capture",

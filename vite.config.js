@@ -45,20 +45,14 @@ export default defineConfig({
     },
   },
   build: {
-    lib: {
-      entry: 'js/index.js',
-      name: 'juicebox',
-      formats: ['es', 'umd'],
-      fileName: (format) => {
-        if (format === 'es') return 'juicebox.esm.js';
-        return 'juicebox.min.js';
-      },
-    },
+    // Standard app build (not library mode) for local frontend
     outDir: 'dist',
-    minify: true, // Use esbuild (faster, built into Vite)
-    sourcemap: true,
+    assetsDir: 'assets',
+    minify: true,
+    sourcemap: true, // Enable sourcemaps for local development
     cssCodeSplit: false, // Extract all CSS into a single file
     rollupOptions: {
+      input: resolve(__dirname, 'index.html'),
       output: {
         assetFileNames: (assetInfo) => {
           // Ensure CSS is named juicebox.css

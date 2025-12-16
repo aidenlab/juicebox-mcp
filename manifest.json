@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.1",
   "name": "juicebox-mcp-server",
-  "version": "0.0.1",
+  "version": "0.0.1-local-frontend",
   "description": "MCP server for controlling Juicebox Hi-C contact map visualization via Model Context Protocol",
   "author": {
     "name": "Douglass Turner"
