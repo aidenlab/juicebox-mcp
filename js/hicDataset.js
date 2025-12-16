@@ -31,7 +31,7 @@ import Straw from '../node_modules/hic-straw/src/straw.js'
 import * as GoogleUtils from "../node_modules/google-utils/src/googleUtils.js"
 import * as GoogleDrive from "../node_modules/google-utils/src/googleDrive.js"
 
-import IGVRemoteFile, {isNetlifyHosted, isS3Url} from "./igvRemoteFile.js"
+import IGVRemoteFile from "./igvRemoteFile.js"
 
 const knownGenomes = {
 
@@ -282,16 +282,10 @@ class HiCDataset extends Dataset {
             config.blob = config.url
             delete config.url
         } else {
-            // Check if we need to proxy this URL (for Google or S3 URLs on Netlify)
-            const needsProxy = GoogleUtils.isGoogleURL(config.url) || 
-                              (isNetlifyHosted() && isS3Url(config.url));
-            
-            if (needsProxy) {
-                // If this is a google url, add api KEY
-                if (GoogleUtils.isGoogleURL(config.url)) {
-                    if (GoogleUtils.isGoogleDriveURL(config.url)) {
-                        config.url = GoogleDrive.getDriveDownloadURL(config.url)
-                    }
+            // If this is a google url, add api KEY
+            if (GoogleUtils.isGoogleURL(config.url)) {
+                if (GoogleUtils.isGoogleDriveURL(config.url)) {
+                    config.url = GoogleDrive.getDriveDownloadURL(config.url)
                 }
                 const copy = Object.assign({}, config);
                 config.file = new IGVRemoteFile(copy);
