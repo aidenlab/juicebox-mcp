@@ -6,10 +6,28 @@
  */
 
 exports.handler = async (event, context) => {
-  // Only allow GET requests
-  if (event.httpMethod !== 'GET') {
+  // Handle CORS preflight (OPTIONS) requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+        'Access-Control-Allow-Headers': 'Range',
+        'Access-Control-Max-Age': '86400'
+      },
+      body: ''
+    };
+  }
+
+  // Allow GET and HEAD requests (HEAD is used to check content length)
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'HEAD') {
     return {
       statusCode: 405,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS'
+      },
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
@@ -46,14 +64,15 @@ exports.handler = async (event, context) => {
     // Get the Range header if present (for partial content requests)
     const rangeHeader = event.headers['range'] || event.headers['Range'];
     
-    // Build fetch options
+    // Build fetch options - use HEAD for HEAD requests, GET otherwise
+    const isHeadRequest = event.httpMethod === 'HEAD';
     const fetchOptions = {
-      method: 'GET',
+      method: isHeadRequest ? 'HEAD' : 'GET',
       headers: {}
     };
 
-    // Forward Range header if present
-    if (rangeHeader) {
+    // Forward Range header if present (only for GET requests)
+    if (rangeHeader && !isHeadRequest) {
       fetchOptions.headers['Range'] = rangeHeader;
     }
 
@@ -64,14 +83,24 @@ exports.handler = async (event, context) => {
     if (!response.ok) {
       return {
         statusCode: response.status,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS'
+        },
         body: JSON.stringify({ 
           error: `Failed to fetch from S3: ${response.status} ${response.statusText}` 
         })
       };
     }
 
-    // Get the response body as ArrayBuffer
-    const arrayBuffer = await response.arrayBuffer();
+    // For HEAD requests, we don't need the body
+    let arrayBuffer;
+    if (isHeadRequest) {
+      arrayBuffer = new ArrayBuffer(0); // Empty buffer for HEAD
+    } else {
+      // Get the response body as ArrayBuffer for GET requests
+      arrayBuffer = await response.arrayBuffer();
+    }
 
     // Get response headers to forward
     const responseHeaders = {
@@ -98,6 +127,15 @@ exports.handler = async (event, context) => {
     // Set status code (206 for partial content, 200 for full)
     const statusCode = response.status === 206 ? 206 : 200;
 
+    // For HEAD requests, don't include body
+    if (isHeadRequest) {
+      return {
+        statusCode,
+        headers: responseHeaders
+        // No body for HEAD requests - Netlify will handle this correctly
+      };
+    }
+
     return {
       statusCode,
       headers: responseHeaders,
@@ -108,6 +146,10 @@ exports.handler = async (event, context) => {
     console.error('Error proxying S3 request:', error);
     return {
       statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS'
+      },
       body: JSON.stringify({ error: 'Internal server error', message: error.message })
     };
   }
