@@ -722,10 +722,34 @@ class InteractionHandler {
             return `${chr}:${start}-${end}`;
         }
 
-        // Pattern 5: Just chromosome name (e.g., "chr1", "chromosome 1")
-        match = normalized.match(/(?:chromosome\s+)?(\w+)/i);
+        // Pattern 5: Just chromosome name (e.g., "chr1", "chromosome 1", "1", "X")
+        // Only match if it looks like a chromosome name to avoid matching gene names
+        // Check for: "chr" prefix followed by numbers/letters that look like chromosomes,
+        // numbers only, single letters (X, Y, M), or "chromosome" keyword
+        match = normalized.match(/^chromosome\s+(\w+)$/i) ||
+                normalized.match(/^chr(\d+|[XYM])$/i) ||  // Only match chr followed by number or X/Y/M
+                normalized.match(/^(\d+)$/) ||
+                normalized.match(/^([XYM])$/i);
         if (match) {
-            const chr = match[1].startsWith('chr') ? match[1] : `chr${match[1]}`;
+            const chrPart = match[1] || match[0];
+            // If it already starts with "chr", use as-is; otherwise add "chr" prefix
+            const chr = chrPart.startsWith('chr') ? chrPart : `chr${chrPart}`;
+            // Verify it's a valid chromosome before returning
+            // If browser is available, check against genome; otherwise trust the pattern
+            if (this.browser && this.browser.genome) {
+                const chromosome = this.browser.genome.getChromosome(chr);
+                if (chromosome) {
+                    return chr;
+                }
+                // If not a valid chromosome, it might be a gene name
+                // Return the chromosome part only (without "chromosome" keyword) for gene lookup
+                // This handles cases like "chromosome BRCA1" -> return "BRCA1" for gene lookup
+                if (normalized.match(/^chromosome\s+(\w+)$/i)) {
+                    return chrPart; // Return just the part after "chromosome"
+                }
+                // For other patterns, return original input (might be a gene name)
+                return input.trim();
+            }
             // Return just chromosome name for whole chromosome view
             return chr;
         }
