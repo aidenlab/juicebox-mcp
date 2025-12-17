@@ -107,6 +107,7 @@ class ColorScaleWidget {
         // This controls the background color of the contact matrix (the "empty" areas between contacts)
         const { r: _r, g: _g, b: _b } = ContactMatrixView.defaultBackgroundColor;
         this.backgroundColorSwatch = colorSwatch(IGVColor.rgbColor(_r, _g, _b));
+        this.backgroundColorSwatch.title = 'Background color';
         this.container.appendChild(this.backgroundColorSwatch);
         this.backgroundColorPicker = createColorPicker(browser, this.backgroundColorSwatch);
 
@@ -114,6 +115,7 @@ class ColorScaleWidget {
         // Only visible in AOB/BOA modes to control the blue color for ratios < 1 (depleted regions)
         const { r: nr, g: ng, b: nb } = defaultRatioColorScaleConfig.negative;
         this.negativeRatioColorSwatch = colorSwatch(IGVColor.rgbColor(nr, ng, nb));
+        this.negativeRatioColorSwatch.title = 'Negative ratio color (ratios < 1, depleted regions) - Only visible in AOB/BOA modes';
         this.container.appendChild(this.negativeRatioColorSwatch);
         this.negativeRatioColorPicker = createColorPicker(browser, this.negativeRatioColorSwatch, '-');
         this.negativeRatioColorSwatch.style.display = 'none';
@@ -123,6 +125,8 @@ class ColorScaleWidget {
         // In AOB/BOA modes: Controls the red color for ratios > 1 (enriched regions)
         const { r, g, b } = defaultRatioColorScaleConfig.positive;
         this.foregroundColorSwatch = colorSwatch(IGVColor.rgbColor(r, g, b));
+        // Initial tooltip will be updated in updateForDisplayMode() based on current mode
+        this.foregroundColorSwatch.title = 'Foreground color';
         this.container.appendChild(this.foregroundColorSwatch);
         this.foregroundColorPicker = createColorPicker(browser, this.foregroundColorSwatch, '+');
 
@@ -214,10 +218,13 @@ class ColorScaleWidget {
             // Update tiles to show ratio colors (separate from single colorScale)
             // [BLUE TILE] = negativeRatioColorSwatch → ratioColorScale.negativeScale
             paintSwatch(this.negativeRatioColorSwatch, ratioColorScale.negativeScale);
+            const ratioModeLabel = mode === 'AOB' ? 'A/B' : 'B/A';
+            this.negativeRatioColorSwatch.title = `Negative ratio color (ratios < 1, depleted regions) - ${ratioModeLabel} mode`;
             
             // [RED TILE] = foregroundColorSwatch → ratioColorScale.positiveScale
             // NOTE: Same tile as A/B mode, but now controls positive ratio color!
             paintSwatch(this.foregroundColorSwatch, ratioColorScale.positiveScale);
+            this.foregroundColorSwatch.title = `Positive ratio color (ratios > threshold, enriched regions) - ${ratioModeLabel} mode`;
         } else {
             // ═══════════════════════════════════════════════════════════════
             // SINGLE MAP MODE (A or B): Show 2 tiles [BACKGROUND] [FOREGROUND]
@@ -228,11 +235,13 @@ class ColorScaleWidget {
             // [RED TILE] = foregroundColorSwatch → single colorScale (for contact data)
             // NOTE: Same tile as ratio mode, but now controls foreground color scale!
             paintSwatch(this.foregroundColorSwatch, colorScale);
+            this.foregroundColorSwatch.title = `Foreground color - ${mode} mode`;
         }
         
-        // [BLUE/GRAY TILE] = backgroundColorSwatch → always controls background (same in all modes)
+        // [BACKGROUND TILE] = backgroundColorSwatch → always controls background (same in all modes)
         const backgroundColor = this.browser.contactMatrixView.getBackgroundColor();
         paintSwatch(this.backgroundColorSwatch, backgroundColor);
+        this.backgroundColorSwatch.title = 'Background color';
     }
 
     /**
