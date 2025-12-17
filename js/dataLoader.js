@@ -83,6 +83,7 @@ class DataLoader {
             }
 
             name = extractName(config);
+            // A: prefix indicates Contact Map (main dataset)
             const prefix = this.browser.controlDataset ? "A: " : "";
             this.browser.contactMapLabel.textContent = prefix + name;
             this.browser.contactMapLabel.title = name;
@@ -296,8 +297,10 @@ class DataLoader {
             if (!this.browser.activeDataset || this.browser.activeDataset.isCompatible(controlDataset)) {
                 this.browser.controlDataset = controlDataset;
                 if (this.browser.activeDataset) {
+                    // A: = Contact Map (main dataset)
                     this.browser.contactMapLabel.textContent = "A: " + this.browser.activeDataset.name;
                 }
+                // B: = Control Map (control dataset)
                 this.browser.controlMapLabel.textContent = "B: " + controlDataset.name;
                 this.browser.controlMapLabel.title = controlDataset.name;
 

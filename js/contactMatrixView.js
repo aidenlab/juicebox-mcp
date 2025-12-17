@@ -42,19 +42,28 @@ const doLegacyTrack2DRendering = false
 
 class ContactMatrixView {
 
-    constructor(browser, viewportElement, sweepZoom, scrollbarWidget, colorScale, ratioColorScale, backgroundColor) {
+    /**
+     * ContactMatrixView renders the Hi-C contact matrix visualization.
+     * 
+     * Display modes:
+     * - 'A': Contact Map (main/primary dataset, browser.dataset)
+     * - 'B': Control Map (secondary/comparison dataset, browser.controlDataset)
+     * - 'AOB': Ratio mode showing Contact Map / Control Map
+     * - 'BOA': Ratio mode showing Control Map / Contact Map
+     * - 'AMB': Difference mode (Contact Map - Control Map)
+     */
+    constructor(browser, viewportElement, sweepZoom, scrollbarWidget, colorScaleManager, backgroundColor) {
         this.browser = browser;
         this.viewportElement = viewportElement;
         this.sweepZoom = sweepZoom;
         this.scrollbarWidget = scrollbarWidget;
 
-        // Set initial color scales. These might be overridden/adjusted via parameters
-        this.colorScale = colorScale;
-        this.ratioColorScale = ratioColorScale;
-        // this.diffColorScale = new RatioColorScale(100, false);
+        // Use ColorScaleManager to manage all color scales
+        this.colorScaleManager = colorScaleManager;
 
-        this.backgroundColor = backgroundColor;
-        this.backgroundRGBString = IGVColor.rgbColor(backgroundColor.r, backgroundColor.g, backgroundColor.b);
+        // Single background color used for all display modes (A, B, AOB, BOA)
+        this.backgroundColor = backgroundColor || ContactMatrixView.defaultBackgroundColor;
+        this.backgroundRGBString = IGVColor.rgbColor(this.backgroundColor.r, this.backgroundColor.g, this.backgroundColor.b);
 
         this.canvasElement = viewportElement.querySelector('canvas');
         this.ctx = this.canvasElement.getContext('2d');
@@ -94,10 +103,22 @@ class ContactMatrixView {
         }
     }
 
+    /**
+     * Set the background color (shared across all display modes).
+     * @param {{r: number, g: number, b: number}} rgb - RGB color object
+     */
     setBackgroundColor(rgb) {
-        this.backgroundColor = rgb
-        this.backgroundRGBString = IGVColor.rgbColor(rgb.r, rgb.g, rgb.b)
-        this.update()
+        this.backgroundColor = rgb;
+        this.backgroundRGBString = IGVColor.rgbColor(rgb.r, rgb.g, rgb.b);
+        this.update();
+    }
+    
+    /**
+     * Get the background color (shared across all display modes).
+     * @returns {{r: number, g: number, b: number}} RGB color object
+     */
+    getBackgroundColor() {
+        return this.backgroundColor;
     }
 
     /**
@@ -123,8 +144,12 @@ class ContactMatrixView {
         }
     }
 
+    /**
+     * Stringify the background color (shared across all modes).
+     * @returns {string} Comma-separated RGB values
+     */
     stringifyBackgroundColor() {
-        return `${this.backgroundColor.r},${this.backgroundColor.g},${this.backgroundColor.b}`
+        return `${this.backgroundColor.r},${this.backgroundColor.g},${this.backgroundColor.b}`;
     }
 
     static parseBackgroundColor(rgbString) {
@@ -132,18 +157,25 @@ class ContactMatrixView {
         return {r, g, b}
     }
 
+    /**
+     * Set the color scale for the current display mode.
+     * @param {ColorScale|RatioColorScale} colorScale - The color scale to set
+     */
     setColorScale(colorScale) {
-
         switch (this.displayMode) {
+            case 'A': // Contact Map - uses single colorScale
+            case 'B': // Control Map - uses same single colorScale
+                this.colorScaleManager.setColorScale(colorScale);
+                break;
             case 'AOB':
             case 'BOA':
-                this.ratioColorScale = colorScale
-                break
+                this.colorScaleManager.setRatioColorScale(colorScale);
+                break;
             case 'AMB':
-                this.diffColorScale = colorScale
-                break
+                this.colorScaleManager.setDiffColorScale(colorScale);
+                break;
             default:
-                this.colorScale = colorScale
+                this.colorScaleManager.setColorScale(colorScale);
         }
         this.colorScaleThresholdCache[colorScaleKey(this.browser.state, this.displayMode)] = colorScale.threshold
     }
@@ -155,22 +187,27 @@ class ContactMatrixView {
         await this.update()
     }
 
+    /**
+     * Get the color scale for the current display mode.
+     * @returns {ColorScale|RatioColorScale} The color scale for the current display mode
+     */
     getColorScale() {
-        switch (this.displayMode) {
-            case 'AOB':
-            case 'BOA':
-                return this.ratioColorScale
-            case 'AMB':
-                return this.diffColorScale
-            default:
-                return this.colorScale
-        }
+        return this.colorScaleManager.getColorScaleForDisplayMode(this.displayMode);
     }
 
+    /**
+     * Set the display mode.
+     * @param {string} mode - Display mode:
+     *   - 'A': Contact Map (main/primary dataset) - uses single colorScale
+     *   - 'B': Control Map (secondary/comparison dataset) - uses same single colorScale
+     *   - 'AOB': Ratio mode showing Contact Map / Control Map - uses ratioColorScale
+     *   - 'BOA': Ratio mode showing Control Map / Contact Map - uses ratioColorScale
+     *   - 'AMB': Difference mode (Contact Map - Control Map) - uses diffColorScale
+     */
     async setDisplayMode(mode) {
-        this.displayMode = mode
-        this.clearImageCaches()
-        await this.update()
+        this.displayMode = mode;
+        this.clearImageCaches();
+        await this.update();
     }
 
     clearImageCaches() {
@@ -204,9 +241,7 @@ class ContactMatrixView {
     }
 
     async update() {
-
-        if (this.disableUpdates) return   // This flag is set during browser startup
-
+        
         await this.repaint()
 
         if (this.browser.dataset && this.browser.state && false === doLegacyTrack2DRendering){
@@ -216,7 +251,10 @@ class ContactMatrixView {
     }
 
     async repaint() {
-        if (!this.browser.dataset || !this.browser.state) return;
+
+        if (!this.browser.dataset || !this.browser.state) {
+            return;
+        }
 
         const viewportWidth = this.viewportElement.offsetWidth;
         const viewportHeight = this.viewportElement.offsetHeight;
@@ -231,32 +269,37 @@ class ContactMatrixView {
         }
 
         const { state, dataset, controlDataset } = this.browser;
-        let ds = dataset, dsControl = null, zdControl = null;
+        // contactMapDataset = A = Contact Map (main dataset)
+        // controlMapDataset = B = Control Map (control dataset)
+        let contactMapDataset = dataset, controlMapDataset = null, zdControl = null;
         let zoom = state.zoom, controlZoom;
 
         switch (this.displayMode) {
-            case 'B':
+            case 'B': // Control Map mode - display controlDataset
                 zoom = getBZoomIndex(state.zoom);
-                ds = controlDataset;
+                contactMapDataset = controlDataset; // controlDataset = B = Control Map
                 break;
             case 'AOB':
             case 'AMB':
+                // Ratio/difference modes need both datasets
                 controlZoom = getBZoomIndex(state.zoom);
-                dsControl = controlDataset;
+                controlMapDataset = controlDataset; // controlDataset = B = Control Map
                 break;
             case 'BOA':
+                // BOA mode swaps which dataset is primary
                 zoom = getBZoomIndex(state.zoom);
                 controlZoom = state.zoom;
-                ds = controlDataset;
-                dsControl = dataset;
+                contactMapDataset = controlDataset; // B becomes primary
+                controlMapDataset = dataset; // A becomes control
                 break;
+            // case 'A': default - Contact Map mode uses dataset as-is
         }
 
-        const matrix = await ds.getMatrix(state.chr1, state.chr2);
+        const matrix = await contactMapDataset.getMatrix(state.chr1, state.chr2);
         const zd = matrix.getZoomDataByIndex(zoom, "BP");
 
-        if (dsControl) {
-            const matrixControl = await dsControl.getMatrix(state.chr1, state.chr2);
+        if (controlMapDataset) {
+            const matrixControl = await controlMapDataset.getMatrix(state.chr1, state.chr2);
             zdControl = matrixControl.getZoomDataByIndex(controlZoom, "BP");
         }
 
@@ -269,19 +312,19 @@ class ContactMatrixView {
         const blockRow2 = Math.floor((state.y + heightInBins) / imageTileDimension);
 
         if (state.normalization !== "NONE") {
-            if (!ds.hasNormalizationVector(state.normalization, zd.chr1.name, zd.zoom.unit, zd.zoom.binSize)) {
+            if (!contactMapDataset.hasNormalizationVector(state.normalization, zd.chr1.name, zd.zoom.unit, zd.zoom.binSize)) {
                 Alert.presentAlert(`Normalization option ${state.normalization} unavailable at this resolution.`);
                 this.browser.notifyNormalizationExternalChange("NONE");
                 state.normalization = "NONE";
             }
         }
 
-        await this.checkColorScale(ds, zd, blockRow1, blockRow2, blockCol1, blockCol2, state.normalization);
+        await this.checkColorScale(contactMapDataset, zd, blockRow1, blockRow2, blockCol1, blockCol2, state.normalization);
 
         this.ctx.clearRect(0, 0, viewportWidth, viewportHeight);
         for (let r = blockRow1; r <= blockRow2; r++) {
             for (let c = blockCol1; c <= blockCol2; c++) {
-                const tile = await this.getImageTile(ds, dsControl, zd, zdControl, r, c, state);
+                const tile = await this.getImageTile(contactMapDataset, controlMapDataset, zd, zdControl, r, c, state);
                 if (tile.image) this.paintTile(tile);
             }
         }
@@ -309,16 +352,16 @@ class ContactMatrixView {
     /**
      * This is where the image tile is actually drawn, if not in the cache
      *
-     * @param ds
-     * @param dsControl
-     * @param zd
-     * @param zdControl
-     * @param row
-     * @param column
-     * @param state
+     * @param {Dataset} contactMapDataset - Contact Map dataset (A = main dataset)
+     * @param {Dataset|null} controlMapDataset - Control Map dataset (B = control dataset), null if not in ratio mode
+     * @param {Object} zd - Zoom data for contact map
+     * @param {Object|null} zdControl - Zoom data for control map, null if not in ratio mode
+     * @param {number} row - Tile row
+     * @param {number} column - Tile column
+     * @param {State} state - Current browser state
      * @returns {Promise<{image: HTMLCanvasElement, column: *, row: *, blockBinCount}|{image, inProgress: boolean, column: *, row: *, blockBinCount}|*>}
      */
-    async getImageTile(ds, dsControl, zd, zdControl, row, column, state) {
+    async getImageTile(contactMapDataset, controlMapDataset, zd, zdControl, row, column, state) {
 
         const key = `${zd.chr1.name}_${zd.chr2.name}_${zd.zoom.binSize}_${zd.zoom.unit}_${row}_${column}_${state.normalization}_${this.displayMode}`
 
@@ -362,10 +405,10 @@ class ContactMatrixView {
                 const region1 = {chr: zd.chr1.name, start: x0bp, end: x0bp + widthInBP}
                 const y0bp = row * widthInBP
                 const region2 = {chr: zd.chr2.name, start: y0bp, end: y0bp + widthInBP}
-                const records = await ds.getContactRecords(state.normalization, region1, region2, zd.zoom.unit, zd.zoom.binSize)
+                const records = await contactMapDataset.getContactRecords(state.normalization, region1, region2, zd.zoom.unit, zd.zoom.binSize)
                 let cRecords
-                if (zdControl) {
-                    cRecords = await dsControl.getContactRecords(state.normalization, region1, region2, zdControl.zoom.unit, zdControl.zoom.binSize)
+                if (zdControl && controlMapDataset) {
+                    cRecords = await controlMapDataset.getContactRecords(state.normalization, region1, region2, zdControl.zoom.unit, zdControl.zoom.binSize)
                 }
 
                 if (records.length > 0) {
@@ -406,7 +449,7 @@ class ContactMatrixView {
                                 }
                                 let score = (rec.counts / averageCount) / (controlRec.counts / ctrlAverageCount)
 
-                                rgba = this.ratioColorScale.getColor(score)
+                                rgba = this.colorScaleManager.getRatioColorScale().getColor(score)
 
                                 break
 
@@ -418,12 +461,17 @@ class ContactMatrixView {
                                 }
                                 score = averageAcrossMapAndControl * ((rec.counts / averageCount) - (controlRec.counts / ctrlAverageCount))
 
-                                rgba = this.diffColorScale.getColor(score)
+                                rgba = this.colorScaleManager.getDiffColorScale().getColor(score)
 
                                 break
 
-                            default:    // Either 'A' or 'B'
-                                rgba = this.colorScale.getColor(rec.counts)
+                            case 'A': // Contact Map - uses single colorScale
+                            case 'B': // Control Map - uses same single colorScale
+                                rgba = this.colorScaleManager.getColorScale().getColor(rec.counts);
+                                break;
+                            default:
+                                // Fallback to single color scale
+                                rgba = this.colorScaleManager.getColorScale().getColor(rec.counts);
                         }
 
                         // TODO -- verify that this bitblting is faster than fillRect
@@ -553,25 +601,39 @@ class ContactMatrixView {
      * @param normalization
      * @returns {*}
      */
-    async checkColorScale(ds, zd, row1, row2, col1, col2, normalization) {
+    /**
+     * Check and adjust color scale threshold based on data percentiles.
+     * @param {Dataset} contactMapDataset - Contact Map dataset (A = main dataset)
+     * @param {Object} zd - Zoom data
+     * @param {number} row1 - Start row
+     * @param {number} row2 - End row
+     * @param {number} col1 - Start column
+     * @param {number} col2 - End column
+     * @param {string} normalization - Normalization type
+     * @returns {ColorScale|RatioColorScale} The color scale being used
+     */
+    async checkColorScale(contactMapDataset, zd, row1, row2, col1, col2, normalization) {
 
         // Safety check: ensure state exists before accessing it
         if (!this.browser.state) {
-            return this.colorScale;
+            return this.colorScaleManager.getColorScaleForDisplayMode(this.displayMode);
         }
 
         const colorKey = colorScaleKey(this.browser.state, this.displayMode)   // This doesn't feel right, state should be an argument
         if ('AOB' === this.displayMode || 'BOA' === this.displayMode) {
-            return this.ratioColorScale     // Don't adjust color scale for A/B.
+            return this.colorScaleManager.getRatioColorScale();     // Don't adjust color scale for A/B.
         }
 
+        // Get the appropriate color scale for current display mode
+        const colorScale = this.colorScaleManager.getColorScaleForDisplayMode(this.displayMode);
+
         if (this.colorScaleThresholdCache[colorKey]) {
-            const changed = this.colorScale.threshold !== this.colorScaleThresholdCache[colorKey]
-            this.colorScale.setThreshold(this.colorScaleThresholdCache[colorKey])
+            const changed = colorScale.threshold !== this.colorScaleThresholdCache[colorKey]
+            colorScale.setThreshold(this.colorScaleThresholdCache[colorKey])
             if (changed) {
-                this.browser.notifyColorScale(this.colorScale)
+                this.browser.notifyColorScale(colorScale)
             }
-            return this.colorScale
+            return colorScale
         } else {
             try {
                 const widthInBP = imageTileDimension * zd.zoom.binSize
@@ -581,19 +643,21 @@ class ContactMatrixView {
                 const y0bp = row1 * widthInBP
                 const yWidthInBp = (row2 - row1 + 1) * widthInBP
                 const region2 = {chr: zd.chr2.name, start: y0bp, end: y0bp + yWidthInBp}
-                const records = await ds.getContactRecords(normalization, region1, region2, zd.zoom.unit, zd.zoom.binSize, true)
+                const records = await contactMapDataset.getContactRecords(normalization, region1, region2, zd.zoom.unit, zd.zoom.binSize, true)
 
                 let s = computePercentile(records, 95)
                 if (!isNaN(s)) {  // Can return NaN if all blocks are empty
                     if (0 === zd.chr1.index) s *= 4   // Heuristic for whole genome view
-                    this.colorScale = new ColorScale(this.colorScale)
-                    this.colorScale.setThreshold(s)
+                    // Update the color scale (single colorScale used for both A and B modes)
+                    const updatedColorScale = new ColorScale(colorScale)
+                    updatedColorScale.setThreshold(s)
+                    this.colorScaleManager.setColorScale(updatedColorScale)
                     this.computeColorScale = false
-                    this.browser.notifyColorScale(this.colorScale)
+                    this.browser.notifyColorScale(updatedColorScale)
                     this.colorScaleThresholdCache[colorKey] = s
                 }
 
-                return this.colorScale
+                return colorScale
             } finally {
                 this.stopSpinner()
             }

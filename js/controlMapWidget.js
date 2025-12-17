@@ -25,6 +25,15 @@
  * Created by dat on 3/21/17.
  */
 
+/**
+ * ControlMapWidget provides UI controls for selecting display modes.
+ * 
+ * Display modes:
+ * - 'A': Contact Map (main/primary dataset, browser.dataset)
+ * - 'B': Control Map (secondary/comparison dataset, browser.controlDataset)
+ * - 'AOB': Ratio mode showing Contact Map / Control Map
+ * - 'BOA': Ratio mode showing Control Map / Contact Map
+ */
 class ControlMapWidget {
 
     constructor(browser, hicNavbarContainer) {
@@ -60,9 +69,9 @@ class ControlMapWidget {
             }
         });
 
-        browser.eventBus.subscribe("DisplayMode", (event) => {
-            this.controlMapHash.updateOptions(event.data);
-        });
+        // Note: DisplayMode events are handled via NotificationCoordinator.notifyDisplayMode()
+        // which calls updateDisplayMode() directly. Event bus subscription removed to eliminate
+        // duplicate notification paths.
     }
 
     toggleDisplayMode() {
@@ -93,7 +102,11 @@ class ControlMapWidget {
 
     /**
      * Update the display mode options.
-     * @param {string} displayMode - The current display mode
+     * @param {string} displayMode - The current display mode:
+     *   - 'A': Contact Map (main/primary dataset)
+     *   - 'B': Control Map (secondary/comparison dataset)
+     *   - 'AOB': Ratio mode showing Contact Map / Control Map
+     *   - 'BOA': Ratio mode showing Control Map / Contact Map
      */
     updateDisplayMode(displayMode) {
         this.controlMapHash.updateOptions(displayMode);
@@ -114,11 +127,12 @@ class ControlMapHash {
         this.imgB = imgB;
         this.toggle.appendChild(this.imgB);
 
+        // Display mode hash: A = Contact Map, B = Control Map
         this.hash = {
-            'A': { title: 'A', value: 'A', other: 'B', hidden: this.imgB, shown: this.imgA },
-            'B': { title: 'B', value: 'B', other: 'A', hidden: this.imgA, shown: this.imgB },
-            'AOB': { title: 'A/B', value: 'AOB', other: 'BOA', hidden: this.imgB, shown: this.imgA },
-            'BOA': { title: 'B/A', value: 'BOA', other: 'AOB', hidden: this.imgA, shown: this.imgB }
+            'A': { title: 'A', value: 'A', other: 'B', hidden: this.imgB, shown: this.imgA }, // A = Contact Map
+            'B': { title: 'B', value: 'B', other: 'A', hidden: this.imgA, shown: this.imgB }, // B = Control Map
+            'AOB': { title: 'A/B', value: 'AOB', other: 'BOA', hidden: this.imgB, shown: this.imgA }, // Contact Map / Control Map
+            'BOA': { title: 'B/A', value: 'BOA', other: 'AOB', hidden: this.imgA, shown: this.imgB }  // Control Map / Contact Map
         };
 
         this.select.addEventListener('change', (e) => {
