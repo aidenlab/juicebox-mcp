@@ -10,8 +10,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { z } from 'zod';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { promises as fsPromises } from 'node:fs';
+import { tmpdir, homedir, platform } from 'node:os';
 import { DATA_SOURCES, getDataSource, getAllSourceIds, isValidSource } from './src/dataSourceConfigs.js';
 import { parseDataSource } from './src/dataParsers.js';
 import { filterMaps } from './src/mapFilter.js';
@@ -116,6 +117,9 @@ function logInfo(...args) {
 // Map<sessionId, WebSocket>
 const wsClients = new Map();
 
+// Map to store pending session data requests (requestId -> { resolve, reject, timeout })
+const pendingSessionRequests = new Map();
+
 // State management removed - commands will simply update Juicebox without querying state
 
 // Detect if we're running in STDIO mode (subprocess) or HTTP mode
@@ -185,6 +189,26 @@ wss.on('connection', (ws) => {
           type: 'sessionRegistered',
           sessionId: sessionId
         }));
+      } else if (data.type === 'sessionData' && data.requestId) {
+        // Handle session data response
+        const request = pendingSessionRequests.get(data.requestId);
+        if (request) {
+          clearTimeout(request.timeout);
+          pendingSessionRequests.delete(data.requestId);
+          request.resolve(data.sessionData);
+          logInfo(`Received session data for request ${data.requestId}`);
+        } else {
+          logWarn(`Received session data for unknown request ID: ${data.requestId}`);
+        }
+      } else if (data.type === 'sessionDataError' && data.requestId) {
+        // Handle session data error response
+        const request = pendingSessionRequests.get(data.requestId);
+        if (request) {
+          clearTimeout(request.timeout);
+          pendingSessionRequests.delete(data.requestId);
+          request.reject(new Error(data.error || 'Failed to get session data'));
+          logError(`Session data error for request ${data.requestId}:`, data.error);
+        }
       } else if (sessionId) {
         // Handle other messages (for testing/debugging)
         logInfo(`Received message from client (session ${sessionId}):`, data.type || 'unknown');
@@ -1222,6 +1246,172 @@ mcpServer.registerTool(
           {
             type: 'text',
             text: `Error getting map details: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Helper function to get Desktop path based on operating system
+function getDesktopPath() {
+  const osPlatform = platform();
+  const home = homedir();
+  
+  switch (osPlatform) {
+    case 'darwin': // macOS
+      return join(home, 'Desktop');
+    case 'win32': // Windows
+      return join(home, 'Desktop');
+    case 'linux': // Linux
+      return join(home, 'Desktop');
+    default:
+      // Fallback to home directory if Desktop doesn't exist
+      return home;
+  }
+}
+
+// Helper function to request session data from browser and wait for response
+async function requestSessionData(sessionId, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const requestId = randomUUID();
+    
+    // Set up timeout
+    const timeout = setTimeout(() => {
+      pendingSessionRequests.delete(requestId);
+      reject(new Error('Timeout waiting for session data from browser'));
+    }, timeoutMs);
+    
+    // Store promise handlers
+    pendingSessionRequests.set(requestId, {
+      resolve: (data) => {
+        clearTimeout(timeout);
+        resolve(data);
+      },
+      reject: (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+      timeout
+    });
+    
+    // Send getSession command to browser
+    const command = {
+      type: 'getSession',
+      requestId: requestId
+    };
+    
+    if (sessionId) {
+      if (!sendToSession(sessionId, command)) {
+        clearTimeout(timeout);
+        pendingSessionRequests.delete(requestId);
+        reject(new Error('No active browser connection found'));
+      }
+    } else {
+      // Try STDIO session or broadcast
+      if (isStdioMode && STDIO_SESSION_ID) {
+        if (!sendToSession(STDIO_SESSION_ID, command)) {
+          clearTimeout(timeout);
+          pendingSessionRequests.delete(requestId);
+          reject(new Error('No active browser connection found'));
+        }
+      } else {
+        clearTimeout(timeout);
+        pendingSessionRequests.delete(requestId);
+        reject(new Error('No session ID available'));
+      }
+    }
+  });
+}
+
+// Register tool: save_session
+mcpServer.registerTool(
+  'save_session',
+  {
+    title: 'Save Session',
+    description: 'Save the current Juicebox session to a JSON file. The session includes all loaded maps, tracks, current view state, color scales, and other configuration. By default, saves to the Desktop with a timestamped filename.',
+    inputSchema: {
+      filePath: z.string().optional().describe('Optional: Full path to save the session file. If not provided, saves to Desktop with filename: juicebox-session-YYYY-MM-DD-HHMMSS.json')
+    }
+  },
+  async ({ filePath }) => {
+    try {
+      
+      // Get current session ID
+      const sessionId = getCurrentSessionId();
+      
+      if (!sessionId && !isStdioMode) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Error: No active session found. Please ensure the browser is connected.'
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Check if browser is connected
+      const hasConnection = sessionId 
+        ? (wsClients.has(sessionId) && wsClients.get(sessionId).readyState === 1)
+        : (isStdioMode && STDIO_SESSION_ID && wsClients.has(STDIO_SESSION_ID));
+      
+      if (!hasConnection) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Error: No active browser connection found. Please ensure the Juicebox browser is open and connected.'
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Request session data from browser
+      logInfo('Requesting session data from browser...');
+      const sessionData = await requestSessionData(sessionId || STDIO_SESSION_ID);
+      
+      // Determine file path
+      let finalFilePath;
+      if (filePath) {
+        finalFilePath = filePath;
+      } else {
+        // Default to Desktop with timestamped filename
+        const desktopPath = getDesktopPath();
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // YYYY-MM-DDTHH-MM-SS
+        finalFilePath = join(desktopPath, `juicebox-session-${timestamp}.json`);
+      }
+      
+      // Ensure directory exists
+      const dir = dirname(finalFilePath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+      
+      // Write session data to file
+      const jsonString = JSON.stringify(sessionData, null, 2);
+      await fsPromises.writeFile(finalFilePath, jsonString, 'utf8');
+      
+      logInfo(`Session saved to: ${finalFilePath}`);
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Session saved successfully to:\n${finalFilePath}\n\nThe session file includes all loaded maps, tracks, current view state, color scales, and configuration.`
+          }
+        ]
+      };
+    } catch (error) {
+      logError('Error saving session:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error saving session: ${error.message}`
           }
         ],
         isError: true

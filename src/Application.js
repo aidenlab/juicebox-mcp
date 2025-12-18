@@ -70,6 +70,9 @@ export class Application {
       }],
       ['gotoLocus', async (command) => {
         await this._gotoLocus(command);
+      }],
+      ['getSession', async (command) => {
+        await this._getSession(command);
       }]
     ]);
   }
@@ -382,6 +385,38 @@ export class Application {
       console.log(`Background color set to RGB(${r}, ${g}, ${b})`);
     } catch (error) {
       console.error('Error setting background color:', error);
+    }
+  }
+
+  /**
+   * Get session JSON and send it back to the server
+   */
+  async _getSession(command) {
+    try {
+      // Import juicebox to access toJSON
+      const sessionData = juicebox.toJSON();
+      
+      // Send session data back to server via WebSocket
+      if (this.wsClient && this.wsClient.isConnected() && this.wsClient.ws) {
+        this.wsClient.ws.send(JSON.stringify({
+          type: 'sessionData',
+          sessionData: sessionData,
+          requestId: command.requestId // Echo back requestId for matching
+        }));
+        console.log('Session data sent to server');
+      } else {
+        console.error('WebSocket not connected, cannot send session data');
+      }
+    } catch (error) {
+      console.error('Error getting session:', error);
+      // Send error back to server
+      if (this.wsClient && this.wsClient.isConnected() && this.wsClient.ws) {
+        this.wsClient.ws.send(JSON.stringify({
+          type: 'sessionDataError',
+          error: error.message,
+          requestId: command.requestId
+        }));
+      }
     }
   }
 
