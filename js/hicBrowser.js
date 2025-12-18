@@ -160,6 +160,11 @@ class HICBrowser {
                     : config.ratioColorScale;
                 // ColorScale.parse returns RatioColorScale when string starts with "R:"
                 this.contactMatrixView.colorScaleManager.setRatioColorScale(ratioColorScale);
+                // Update display mode again to refresh color tiles with the loaded ratio colors
+                // This ensures the color tiles show the correct colors from the saved session
+                if (config.displayMode && (config.displayMode === 'AOB' || config.displayMode === 'BOA')) {
+                    this.notifyDisplayMode(config.displayMode);
+                }
             }
 
             const promises = [];
