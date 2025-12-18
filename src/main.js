@@ -62,7 +62,12 @@ const enhanced_config =
         "ratioColorScale": "R:5:1.6094379124341003,255,0,0:1.6094379124341003,0,0,255",
         
         // Initial display mode
-        // Options: "A" (Contact Map), "B" (Control Map), "AOB" (Contact/Control ratio), "BOA" (Control/Contact ratio)
+        // Options: 
+        // "A" (Contact Map), 
+        // "B" (Control Map), 
+        // "AOB" (Contact/Control ratio), 
+        // "BOA" (Control/Contact ratio),
+        // "AMB" (Contact Map - Control Map)
         "displayMode": "A",  // Start showing Contact Map
         
         // Optional: Gene selection
