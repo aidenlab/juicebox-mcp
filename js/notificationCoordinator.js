@@ -118,7 +118,9 @@ class NotificationCoordinator {
     _updateColorScaleWidgetForMapLoad() {
         const colorScaleWidget = this._getUIComponent('colorScaleWidget');
         if (colorScaleWidget) {
-            colorScaleWidget.updateMapBackgroundColor(this.browser.contactMatrixView.backgroundColor);
+            // Update background color swatch to show the background for current display mode
+            const currentBackgroundColor = this.browser.contactMatrixView.getBackgroundColor();
+            colorScaleWidget.updateMapBackgroundColor(currentBackgroundColor);
         }
     }
 
@@ -267,16 +269,20 @@ class NotificationCoordinator {
 
     /**
      * Private helper: Update color scale widget for display mode changes.
+     * @param {string} mode - Display mode:
+     *   - 'A': Contact Map - uses single colorScale
+     *   - 'B': Control Map - uses same single colorScale
+     *   - 'AOB'/'BOA': Ratio modes - use ratioColorScale (separate from single colorScale)
      */
     _updateColorScaleWidgetForDisplayMode(mode) {
         const colorScaleWidget = this._getUIComponent('colorScaleWidget');
         if (colorScaleWidget) {
-            const contactMatrixView = this.browser.contactMatrixView;
-            colorScaleWidget.updateForDisplayMode(
-                mode,
-                contactMatrixView.ratioColorScale,
-                contactMatrixView.colorScale
-            );
+            const manager = this.browser.contactMatrixView.colorScaleManager;
+            // Single colorScale used for both A and B modes
+            const colorScale = manager.getColorScale();
+            // Ratio colorScale used for AOB/BOA modes (separate from single colorScale)
+            const ratioColorScale = manager.getRatioColorScale();
+            colorScaleWidget.updateForDisplayMode(mode, ratioColorScale, colorScale);
         }
     }
 
@@ -293,7 +299,12 @@ class NotificationCoordinator {
     /**
      * Notify UI components that display mode has changed.
      * 
-     * @param {string} mode - The display mode ("A", "B", "AOB", "BOA")
+     * @param {string} mode - The display mode:
+     *   - 'A': Contact Map (main/primary dataset)
+     *   - 'B': Control Map (secondary/comparison dataset)
+     *   - 'AOB': Ratio mode showing Contact Map / Control Map
+     *   - 'BOA': Ratio mode showing Control Map / Contact Map
+     *   - 'AMB': Difference mode (Contact Map - Control Map)
      */
     notifyDisplayMode(mode) {
         this._updateColorScaleWidgetForDisplayMode(mode);

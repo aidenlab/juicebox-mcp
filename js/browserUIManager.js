@@ -29,8 +29,7 @@ import NormalizationWidget from "./normalizationWidget.js"
 import {getNavbarContainer} from "./layoutController.js"
 import SweepZoom from "./sweepZoom.js"
 import ScrollbarWidget from "./scrollbarWidget.js"
-import ColorScale, {defaultColorScaleConfig} from "./colorScale.js"
-import RatioColorScale, {defaultRatioColorScaleConfig} from "./ratioColorScale.js"
+import ColorScaleManager from "./colorScaleManager.js"
 import ContactMatrixView from "./contactMatrixView.js"
 import ChromosomeSelector from "./chromosomeSelector.js"
 import AnnotationWidget from "./annotationWidget.js"
@@ -75,25 +74,27 @@ class BrowserUIManager {
             this.browser.layoutController.getYAxisScrollbarContainer()
         );
 
-        const colorScale = new ColorScale(defaultColorScaleConfig);
-        const ratioColorScale = new RatioColorScale(defaultRatioColorScaleConfig.threshold);
-        ratioColorScale.setColorComponents(defaultRatioColorScaleConfig.negative, '-');
-        ratioColorScale.setColorComponents(defaultRatioColorScaleConfig.positive, '+');
+        // Create ColorScaleManager to manage all color scales
+        const colorScaleManager = new ColorScaleManager();
 
         this.components.set('sweepZoom', sweepZoom);
         this.components.set('scrollbar', scrollbarWidget);
-        this.components.set('colorScale', colorScale);
-        this.components.set('ratioColorScale', ratioColorScale);
+        this.components.set('colorScaleManager', colorScaleManager);
 
-        // Initialize ContactMatrixView with the components
-        const backgroundColor = this.browser.config.backgroundColor || ContactMatrixView.defaultBackgroundColor;
+        // Initialize ContactMatrixView with ColorScaleManager
+        // Single background color used for all display modes
+        const backgroundColor = this.browser.config.backgroundColor 
+            ? (typeof this.browser.config.backgroundColor === 'string'
+                ? ContactMatrixView.parseBackgroundColor(this.browser.config.backgroundColor)
+                : this.browser.config.backgroundColor)
+            : ContactMatrixView.defaultBackgroundColor;
+        
         this.components.set('contactMatrix', new ContactMatrixView(
             this.browser,
             this.browser.layoutController.getContactMatrixViewport(),
             sweepZoom,
             scrollbarWidget,
-            colorScale,
-            ratioColorScale,
+            colorScaleManager,
             backgroundColor
         ));
     }

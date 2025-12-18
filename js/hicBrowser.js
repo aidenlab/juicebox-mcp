@@ -39,6 +39,7 @@ import StateManager from "./stateManager.js"
 import InteractionHandler from "./interactionHandler.js"
 import DataLoader from "./dataLoader.js"
 import RenderCoordinator from "./renderCoordinator.js"
+import ColorScale from "./colorScale.js"
 
 const DEFAULT_PIXEL_SIZE = 1
 const MAX_PIXEL_SIZE = 128
@@ -112,8 +113,6 @@ class HICBrowser {
     async init(config) {
         this.renderCoordinator.init();
 
-        this.contactMatrixView.disableUpdates = true;
-
         try {
             this.contactMatrixView.startSpinner();
             this.userInteractionShield.style.display = 'block';
@@ -138,12 +137,29 @@ class HICBrowser {
                 this.notifyDisplayMode(config.displayMode);
             }
 
+            // Handle color scale configuration
+            // Single colorScale is used for both A and B modes
+            // Ratio colorScale is separate and used for AOB/BOA modes
             if (config.colorScale) {
                 if (config.normalization) {
                     this.state.normalization = config.normalization;
                 }
-                this.contactMatrixView.setColorScale(config.colorScale);
+                const colorScale = typeof config.colorScale === 'string'
+                    ? ColorScale.parse(config.colorScale)
+                    : config.colorScale;
+                // Set single colorScale (used for both A and B modes)
+                this.contactMatrixView.colorScaleManager.setColorScale(colorScale);
                 this.notifyColorScale(this.contactMatrixView.getColorScale());
+            }
+
+            // Handle ratio color scale configuration (for AOB/BOA modes)
+            // Only relevant when controlDataset exists
+            if (config.ratioColorScale && this.controlDataset) {
+                const ratioColorScale = typeof config.ratioColorScale === 'string'
+                    ? ColorScale.parse(config.ratioColorScale)  // ColorScale.parse handles RatioColorScale strings
+                    : config.ratioColorScale;
+                // ColorScale.parse returns RatioColorScale when string starts with "R:"
+                this.contactMatrixView.colorScaleManager.setRatioColorScale(ratioColorScale);
             }
 
             const promises = [];
@@ -179,7 +195,7 @@ class HICBrowser {
         } finally {
             this.contactMatrixView.stopSpinner();
             this.userInteractionShield.style.display = 'none';
-            this.contactMatrixView.disableUpdates = false;
+            // Update after initialization completes - repaint() will guard if dataset/state aren't ready
             this.contactMatrixView.update();
         }
     }
@@ -290,19 +306,21 @@ class HICBrowser {
         return this.activeDataset && this.activeState && this.activeDataset.isWholeGenome(this.activeState.chr1)
     }
 
+    /**
+     * Get the color scale for the current display mode.
+     * 
+     * Display modes:
+     * - 'A': Returns Contact Map color scale (main/primary dataset)
+     * - 'B': Returns Control Map color scale (secondary/comparison dataset)
+     * - 'AOB'/'BOA': Returns ratio color scale
+     * - 'AMB': Returns difference color scale
+     * 
+     * @returns {ColorScale|RatioColorScale|undefined} The color scale for the current display mode
+     */
     getColorScale() {
-
-        if (!this.contactMatrixView) return undefined
-
-        switch (this.getDisplayMode()) {
-            case 'AOB':
-            case 'BOA':
-                return this.contactMatrixView.ratioColorScale
-            case 'AMB':
-                return this.contactMatrixView.diffColorScale
-            default:
-                return this.contactMatrixView.colorScale
-        }
+        if (!this.contactMatrixView) return undefined;
+        return this.contactMatrixView.colorScaleManager
+            .getColorScaleForDisplayMode(this.getDisplayMode());
     }
 
     setColorScaleThreshold(threshold) {
@@ -944,6 +962,10 @@ class HICBrowser {
             if (nviString) {
                 jsonOBJ.controlNvi = nviString
             }
+            // Save ratio color scale (used for AOB/BOA modes)
+            // Format: "R:threshold:positiveScale:negativeScale"
+            // where positiveScale and negativeScale are "threshold,r,g,b"
+            jsonOBJ.ratioColorScale = this.contactMatrixView.colorScaleManager.getRatioColorScale().stringify()
             const controlMapWidget = this.ui.getComponent('controlMap');
             if (controlMapWidget.getDisplayModeCycle() !== undefined) {
                 jsonOBJ.cycle = true
