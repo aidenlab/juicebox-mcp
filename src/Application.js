@@ -202,6 +202,9 @@ export class Application {
     try {
       await this.browser.loadHicFile(config);
       console.log(`Map loaded: ${command.url}`);
+      
+      // If both contact map and control map are loaded, set display mode to AOB
+      await this._ensureAOBModeWhenBothMapsLoaded();
     } catch (error) {
       console.error('Error loading map:', error);
     }
@@ -226,6 +229,9 @@ export class Application {
       // Load control map using the dedicated method
       await this.browser.loadHicControlFile(config);
       console.log(`Control map loaded: ${command.url}`);
+      
+      // If both contact map and control map are loaded, set display mode to AOB
+      await this._ensureAOBModeWhenBothMapsLoaded();
     } catch (error) {
       console.error('Error loading control map:', error);
     }
@@ -376,6 +382,33 @@ export class Application {
       console.log(`Background color set to RGB(${r}, ${g}, ${b})`);
     } catch (error) {
       console.error('Error setting background color:', error);
+    }
+  }
+
+  /**
+   * Ensure display mode is set to AOB when both contact map and control map are loaded.
+   * This is called after loading either map to automatically switch to comparison mode.
+   */
+  async _ensureAOBModeWhenBothMapsLoaded() {
+    if (!this.browser) {
+      return;
+    }
+
+    try {
+      // Check if both maps are loaded
+      const hasContactMap = this.browser.dataset || this.browser.activeDataset;
+      const hasControlMap = this.browser.controlDataset;
+
+      if (hasContactMap && hasControlMap) {
+        // Both maps are loaded, set display mode to AOB (A over B)
+        const currentMode = this.browser.getDisplayMode();
+        if (currentMode !== 'AOB') {
+          await this.browser.setDisplayMode('AOB');
+          console.log('Display mode set to AOB (A over B) since both maps are loaded');
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring AOB mode:', error);
     }
   }
 
