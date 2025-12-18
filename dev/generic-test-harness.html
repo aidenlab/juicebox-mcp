@@ -22,10 +22,10 @@
             width: 100%;
             height: 100vh;
         }
-        .save-session-button {
+        .save-session-button,
+        .load-session-button {
             position: fixed;
             top: 20px;
-            right: 20px;
             z-index: 1000;
             padding: 10px 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -38,12 +38,23 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        .save-session-button:hover {
+        .save-session-button {
+            right: 20px;
+        }
+        .load-session-button {
+            right: 180px;
+        }
+        .save-session-button:hover,
+        .load-session-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-        .save-session-button:active {
+        .save-session-button:active,
+        .load-session-button:active {
             transform: translateY(0);
+        }
+        #session-file-input {
+            display: none;
         }
     </style>
 </head>
@@ -51,6 +62,8 @@
 <body>
 
 <button id="save-session-button" class="save-session-button">Save Session</button>
+<button id="load-session-button" class="load-session-button">Load Session</button>
+<input type="file" id="session-file-input" accept=".json" />
 <div id="app-container"></div>
 
 <script type="module">
@@ -361,8 +374,62 @@
         }
     }
 
-    // Attach save button handler
+    // Load session functionality
+    async function loadSession() {
+        const fileInput = document.getElementById('session-file-input');
+        fileInput.click();
+    }
+
+    async function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        try {
+            const fileText = await file.text();
+            let sessionData;
+            
+            // Try to parse as JSON
+            try {
+                sessionData = JSON.parse(fileText);
+            } catch (parseError) {
+                // If it's a compressed session format
+                // Handle "session=blob:..." format (from compressedSession())
+                if (fileText.startsWith("session=blob:")) {
+                    const { BGZip } = await import('../node_modules/igv-utils/src/index.js');
+                    const compressedData = fileText.substring(13); // Skip "session=blob:"
+                    const jsonString = BGZip.uncompressString(compressedData);
+                    sessionData = JSON.parse(jsonString);
+                } 
+                // Handle "blob:" or "data:" format
+                else if (fileText.startsWith("blob:") || fileText.startsWith("data:")) {
+                    const { BGZip } = await import('../node_modules/igv-utils/src/index.js');
+                    const compressedData = fileText.substring(5); // Skip "blob:" or "data:"
+                    const jsonString = BGZip.uncompressString(compressedData);
+                    sessionData = JSON.parse(jsonString);
+                } else {
+                    throw parseError;
+                }
+            }
+
+            // Restore the session
+            await juicebox.restoreSession(document.getElementById("app-container"), sessionData);
+            console.log('Session loaded successfully');
+            
+            // Reset the file input so the same file can be loaded again
+            event.target.value = '';
+        } catch (error) {
+            console.error('Error loading session:', error);
+            alert('Error loading session: ' + error.message);
+            event.target.value = '';
+        }
+    }
+
+    // Attach button handlers
     document.getElementById('save-session-button').addEventListener('click', saveSession);
+    document.getElementById('load-session-button').addEventListener('click', loadSession);
+    document.getElementById('session-file-input').addEventListener('change', handleFileSelect);
 
 </script>
 

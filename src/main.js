@@ -1,14 +1,14 @@
 import { Application } from './Application.js';
 
 // Default configuration
-const config =
+const minimal_config =
     {
         backgroundColor: '255,255,255'
     }
 
 // Legacy configuration format (backward compatible)
 // Single colorScale applies to the map matching displayMode
-const debug_config =
+const legacy_config =
     {
         "backgroundColor": "0,74,136",
         "url": "https://hicfiles.s3.amazonaws.com/hiseq/imr90/in-situ/combined.hic",
@@ -74,19 +74,14 @@ const enhanced_config =
         "selectedGene": "egfr"
     }
 
-// Initialize application
-const app = new Application();
-
-// Use enhanced_config to demonstrate the simplified color scale system
-// Switch to debug_config to use legacy format
-app.init(document.getElementById('app-container'), enhanced_config)
-    .then(() => {
-        console.log('Juicebox MCP application initialized');
-        console.log('Using simplified color scale model:');
-        console.log('- Single colorScale (used for both A and B modes):', enhanced_config.colorScale);
-        console.log('- Single backgroundColor (shared across all modes):', enhanced_config.backgroundColor);
-        console.log('- Ratio colorScale (for AOB/BOA modes):', enhanced_config.ratioColorScale);
-    })
-    .catch((error) => {
+async function initializeApp() {
+    try {
+        const app = new Application();
+        await app.init(document.getElementById('app-container'), minimal_config);
+        console.log('Using minimal config:');
+    } catch (error) {
         console.error('Error initializing application:', error);
-    });
+    }
+}
+
+document.addEventListener("DOMContentLoaded", async (event) => await initializeApp());
