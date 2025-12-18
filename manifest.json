@@ -1,5 +1,5 @@
 {
-  "manifest_version": "1.0",
+  "manifest_version": "0.1",
   "name": "juicebox-mcp-server",
   "version": "1.0.1",
   "description": "MCP server for controlling Juicebox Hi-C contact map visualization via Model Context Protocol",
