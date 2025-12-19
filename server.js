@@ -757,7 +757,13 @@ mcpServer.registerTool(
       const compressedSessionString = await requestCompressedSessionData(sessionId || STDIO_SESSION_ID);
       
       // Build URL with compressed session (format: base?session=blob:compressedData)
-      const shareableUrl = `${BROWSER_URL}?${compressedSessionString}`;
+      // Note: We intentionally do NOT include sessionId in shareable URLs because:
+      // 1. The compressed session data is self-contained and includes all state
+      // 2. sessionId is only for WebSocket connection back to Claude Desktop
+      // 3. When shared, recipients don't need Claude Desktop connection - just the visualization
+      // Strip any existing query parameters from BROWSER_URL to ensure clean shareable URLs
+      const baseUrl = BROWSER_URL.split('?')[0].split('#')[0];
+      const shareableUrl = `${baseUrl}?${compressedSessionString}`;
       
       // Shorten the URL
       let shortenedUrl;
