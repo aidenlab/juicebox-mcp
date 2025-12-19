@@ -909,12 +909,12 @@ mcpServer.registerTool(
   }
 );
 
-// Register tool: how_to
+// Register tool: juicebox_help
 mcpServer.registerTool(
-  'how_to',
+  'juicebox_help',
   {
-    title: 'How To Guide',
-    description: 'Provides a quick-start guide with common phrases and examples for using Juicebox via natural language. Use this when users ask "how to", "how do I", "what can I do", "get started", "help", or similar questions about using the tool.',
+    title: 'Juicebox Help Guide',
+    description: 'Provides a quick-start guide with common phrases and examples for using Juicebox via natural language. Use this ONLY when users explicitly ask about Juicebox, such as "how to use Juicebox", "Juicebox help", "how do I use Juicebox", "what can I do with Juicebox", "get started with Juicebox", "Juicebox examples", "how does Juicebox work", or similar questions specifically about the Juicebox tool. Do NOT use this for general "how to" questions unrelated to Juicebox.',
     inputSchema: {}
   },
   async () => {
