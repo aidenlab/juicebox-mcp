@@ -81,7 +81,25 @@ mcp-inspector
 
 Once started, the MCP Inspector UI will load in your browser, showing connection configuration options.
 
-### Step 1: Start the Server in HTTP Mode
+### Step 1: Configure Environment Variables (Optional)
+
+For local testing, you can set up a `.env` file to configure the TinyURL API key and other settings:
+
+1. **Copy the example file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` and add your TinyURL API key:**
+   ```bash
+   TINYURL_API_KEY=your_actual_api_key_here
+   ```
+
+   The `.env` file is automatically loaded when running `server.js` directly (for testing). It's ignored when running from the bundled `.mcpb` file (which uses `manifest.json` instead).
+
+   **Note:** If you don't set up a `.env` file, URL shortening will be disabled during testing (URLs will be returned unshortened, which is fine for testing).
+
+### Step 2: Start the Server in HTTP Mode
 
 **You must explicitly enable HTTP mode** - the server defaults to STDIO mode for Claude Desktop compatibility.
 
@@ -114,7 +132,7 @@ For MCP Inspector:
   - Connection URL: http://localhost:3010/mcp
 ```
 
-### Step 2: Configure MCP Inspector
+### Step 3: Configure MCP Inspector
 
 In the MCP Inspector UI:
 
@@ -122,7 +140,7 @@ In the MCP Inspector UI:
 2. **Connection Type**: Select **"direct"**
 3. **Connection URL**: Enter `http://localhost:3010/mcp`
 
-### Step 3: Connect
+### Step 4: Connect
 
 Click the connect button. The MCP Inspector should establish a connection and you should see:
 - Initialization handshake

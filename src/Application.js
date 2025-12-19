@@ -73,6 +73,9 @@ export class Application {
       }],
       ['getSession', async (command) => {
         await this._getSession(command);
+      }],
+      ['getCompressedSession', async (command) => {
+        await this._getCompressedSession(command);
       }]
     ]);
   }
@@ -413,6 +416,38 @@ export class Application {
       if (this.wsClient && this.wsClient.isConnected() && this.wsClient.ws) {
         this.wsClient.ws.send(JSON.stringify({
           type: 'sessionDataError',
+          error: error.message,
+          requestId: command.requestId
+        }));
+      }
+    }
+  }
+
+  /**
+   * Get compressed session string and send it back to the server
+   */
+  async _getCompressedSession(command) {
+    try {
+      // Import juicebox to access compressedSession
+      const compressedSessionString = juicebox.compressedSession();
+      
+      // Send compressed session string back to server via WebSocket
+      if (this.wsClient && this.wsClient.isConnected() && this.wsClient.ws) {
+        this.wsClient.ws.send(JSON.stringify({
+          type: 'compressedSessionData',
+          compressedSession: compressedSessionString,
+          requestId: command.requestId // Echo back requestId for matching
+        }));
+        console.log('Compressed session data sent to server');
+      } else {
+        console.error('WebSocket not connected, cannot send compressed session data');
+      }
+    } catch (error) {
+      console.error('Error getting compressed session:', error);
+      // Send error back to server
+      if (this.wsClient && this.wsClient.isConnected() && this.wsClient.ws) {
+        this.wsClient.ws.send(JSON.stringify({
+          type: 'compressedSessionDataError',
           error: error.message,
           requestId: command.requestId
         }));

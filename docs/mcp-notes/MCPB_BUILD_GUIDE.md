@@ -220,6 +220,8 @@ Before building, you can customize `manifest.json`:
 - **Version:** Update `version` field (e.g., "0.0.1" → "0.0.2")
 - **BROWSER_URL:** Change default frontend URL if deploying to Netlify
 - **Ports:** Adjust `MCP_PORT` or `WS_PORT` if needed
+- **TinyURL API Key:** Replace `YOUR_TINYURL_API_KEY_HERE` with your actual TinyURL API key
+- **TinyURL:** Adjust `TINYURL_DOMAIN` or `TINYURL_ENDPOINT` if needed
 
 **Important:** After changing `manifest.json`, rebuild the package:
 ```bash
@@ -230,10 +232,21 @@ npm run build:mcpb
 
 The server reads environment variables in this priority order:
 1. Command-line arguments (`--browser-url`)
-2. Environment variables (`BROWSER_URL`, `MCP_PORT`, `WS_PORT`)
+2. Environment variables (`BROWSER_URL`, `MCP_PORT`, `WS_PORT`, `TINYURL_API_KEY`, etc.)
 3. Default values from `manifest.json`
 
-Users can override `manifest.json` defaults by setting environment variables before starting Claude Desktop.
+Users can override `manifest.json` defaults by setting environment variables before starting Claude Desktop, but this is optional - all configuration is included in the `.mcpb` file for simple one-file installation.
+
+#### TinyURL Configuration
+
+The `TINYURL_API_KEY` is included directly in `manifest.json` for simple installation. Before building the `.mcpb` package:
+
+1. Open `manifest.json`
+2. Find `"TINYURL_API_KEY": "YOUR_TINYURL_API_KEY_HERE"`
+3. Replace `YOUR_TINYURL_API_KEY_HERE` with your actual TinyURL API key
+4. Build the package: `npm run build:mcpb`
+
+**Note:** If `TINYURL_API_KEY` is not set or invalid, the server will still function but URLs will be returned unshortened (graceful degradation).
 
 ## Development Workflow
 

@@ -1,3 +1,7 @@
+// Load environment variables from .env file for local development/testing
+// This is only used when running server.js directly (not in bundled .mcpb)
+import 'dotenv/config';
+
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -17,6 +21,7 @@ import { DATA_SOURCES, getDataSource, getAllSourceIds, isValidSource } from './s
 import { parseDataSource } from './src/dataParsers.js';
 import { filterMaps } from './src/mapFilter.js';
 import { formatSearchResults, formatSearchResultsJSON } from './src/resultFormatter.js';
+import { tinyURLShortener } from './src/urlShortener.js';
 
 // Parse command line arguments
 function parseCommandLineArgs() {
@@ -45,6 +50,9 @@ Environment Variables:
   WS_PORT                    WebSocket server port (default: 3011)
   MCP_TRANSPORT              Set to "http" or "sse" to force HTTP mode
   FORCE_HTTP_MODE            Set to "true" to force HTTP mode
+  TINYURL_API_KEY            TinyURL API key for URL shortening (optional)
+  TINYURL_DOMAIN             TinyURL custom domain (optional, default: t.3dg.io)
+  TINYURL_ENDPOINT           TinyURL API endpoint (optional, default: https://api.tinyurl.com/create)
 
 Configuration Priority:
   1. Command line argument (--browser-url)
@@ -70,6 +78,18 @@ const WS_PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT, 10) : 3011;
 // Priority: 1) Command line argument (--browser-url), 2) Environment variable (BROWSER_URL), 
 //           3) Default (localhost)
 const BROWSER_URL = cliArgs.browserUrl || process.env.BROWSER_URL || 'http://localhost:5173';
+
+// TinyURL configuration
+const TINYURL_API_KEY = process.env.TINYURL_API_KEY;
+const TINYURL_DOMAIN = process.env.TINYURL_DOMAIN || 't.3dg.io';
+const TINYURL_ENDPOINT = process.env.TINYURL_ENDPOINT || 'https://api.tinyurl.com/create';
+
+// Initialize URL shortener
+const shortenURL = tinyURLShortener({
+  endpoint: TINYURL_ENDPOINT,
+  apiKey: TINYURL_API_KEY,
+  domain: TINYURL_DOMAIN
+});
 
 // Force HTTP mode if requested via command line
 if (cliArgs.httpMode) {
@@ -208,6 +228,26 @@ wss.on('connection', (ws) => {
           pendingSessionRequests.delete(data.requestId);
           request.reject(new Error(data.error || 'Failed to get session data'));
           logError(`Session data error for request ${data.requestId}:`, data.error);
+        }
+      } else if (data.type === 'compressedSessionData' && data.requestId) {
+        // Handle compressed session data response
+        const request = pendingSessionRequests.get(data.requestId);
+        if (request) {
+          clearTimeout(request.timeout);
+          pendingSessionRequests.delete(data.requestId);
+          request.resolve(data.compressedSession);
+          logInfo(`Received compressed session data for request ${data.requestId}`);
+        } else {
+          logWarn(`Received compressed session data for unknown request ID: ${data.requestId}`);
+        }
+      } else if (data.type === 'compressedSessionDataError' && data.requestId) {
+        // Handle compressed session data error response
+        const request = pendingSessionRequests.get(data.requestId);
+        if (request) {
+          clearTimeout(request.timeout);
+          pendingSessionRequests.delete(data.requestId);
+          request.reject(new Error(data.error || 'Failed to get compressed session data'));
+          logError(`Compressed session data error for request ${data.requestId}:`, data.error);
         }
       } else if (sessionId) {
         // Handle other messages (for testing/debugging)
@@ -694,24 +734,67 @@ mcpServer.registerTool(
       };
     }
 
-    // Generate shareable URL with session ID
-    const shareableUrl = `${BROWSER_URL}?sessionId=${sessionId}`;
+    // Check if browser is connected
+    const hasConnection = sessionId 
+      ? (wsClients.has(sessionId) && wsClients.get(sessionId).readyState === 1)
+      : (isStdioMode && STDIO_SESSION_ID && wsClients.has(STDIO_SESSION_ID));
     
-    // Include connection status
-    const registeredSessions = Array.from(wsClients.keys());
-    const isConnected = registeredSessions.includes(sessionId);
-    const connectionStatus = isConnected 
-      ? `✅ WebSocket client connected and registered`
-      : `⚠️  WebSocket client NOT connected (registered sessions: ${registeredSessions.length > 0 ? registeredSessions.join(', ') : 'none'})`;
-    
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Shareable URL for this session:\n\n${shareableUrl}\n\n${connectionStatus}\n\nCopy and paste this URL to share the current Juicebox session.`
-        }
-      ]
-    };
+    if (!hasConnection) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Error: No active browser connection found. Please ensure the Juicebox browser is open and connected.'
+          }
+        ],
+        isError: true
+      };
+    }
+
+    try {
+      // Request compressed session data from browser
+      logInfo('Requesting compressed session data from browser...');
+      const compressedSessionString = await requestCompressedSessionData(sessionId || STDIO_SESSION_ID);
+      
+      // Build URL with compressed session (format: base?session=blob:compressedData)
+      const shareableUrl = `${BROWSER_URL}?${compressedSessionString}`;
+      
+      // Shorten the URL
+      let shortenedUrl;
+      try {
+        shortenedUrl = await shortenURL(shareableUrl);
+      } catch (error) {
+        logWarn('Failed to shorten URL:', error.message);
+        shortenedUrl = shareableUrl; // Fallback to original URL
+      }
+      
+      // Include connection status
+      const registeredSessions = Array.from(wsClients.keys());
+      const isConnected = registeredSessions.includes(sessionId);
+      const connectionStatus = isConnected 
+        ? `✅ WebSocket client connected and registered`
+        : `⚠️  WebSocket client NOT connected (registered sessions: ${registeredSessions.length > 0 ? registeredSessions.join(', ') : 'none'})`;
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Shareable URL for this session:\n\n${shortenedUrl}\n\n${connectionStatus}\n\nCopy and paste this URL to share the current Juicebox session.`
+          }
+        ]
+      };
+    } catch (error) {
+      logError('Error creating shareable URL:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error creating shareable URL: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
   }
 );
 
@@ -1299,6 +1382,59 @@ async function requestSessionData(sessionId, timeoutMs = 10000) {
     // Send getSession command to browser
     const command = {
       type: 'getSession',
+      requestId: requestId
+    };
+    
+    if (sessionId) {
+      if (!sendToSession(sessionId, command)) {
+        clearTimeout(timeout);
+        pendingSessionRequests.delete(requestId);
+        reject(new Error('No active browser connection found'));
+      }
+    } else {
+      // Try STDIO session or broadcast
+      if (isStdioMode && STDIO_SESSION_ID) {
+        if (!sendToSession(STDIO_SESSION_ID, command)) {
+          clearTimeout(timeout);
+          pendingSessionRequests.delete(requestId);
+          reject(new Error('No active browser connection found'));
+        }
+      } else {
+        clearTimeout(timeout);
+        pendingSessionRequests.delete(requestId);
+        reject(new Error('No session ID available'));
+      }
+    }
+  });
+}
+
+// Helper function to request compressed session data from browser and wait for response
+async function requestCompressedSessionData(sessionId, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const requestId = randomUUID();
+    
+    // Set up timeout
+    const timeout = setTimeout(() => {
+      pendingSessionRequests.delete(requestId);
+      reject(new Error('Timeout waiting for compressed session data from browser'));
+    }, timeoutMs);
+    
+    // Store promise handlers
+    pendingSessionRequests.set(requestId, {
+      resolve: (data) => {
+        clearTimeout(timeout);
+        resolve(data);
+      },
+      reject: (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+      timeout
+    });
+    
+    // Send getCompressedSession command to browser
+    const command = {
+      type: 'getCompressedSession',
       requestId: requestId
     };
     
