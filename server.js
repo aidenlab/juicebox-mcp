@@ -909,6 +909,140 @@ mcpServer.registerTool(
   }
 );
 
+// Register tool: how_to
+mcpServer.registerTool(
+  'how_to',
+  {
+    title: 'How To Guide',
+    description: 'Provides a quick-start guide with common phrases and examples for using Juicebox via natural language. Use this when users ask "how to", "how do I", "what can I do", "get started", "help", or similar questions about using the tool.',
+    inputSchema: {}
+  },
+  async () => {
+    const guide = `# How to Use Juicebox with Claude
+
+Welcome! You can interact with Juicebox using natural language. Just tell me what you want to do, and I'll help you explore Hi-C contact maps and genomic data.
+
+## Getting Started
+
+**First, connect your browser:**
+- Say: "Open Juicebox" or "Show me Juicebox" or "Get the Juicebox URL"
+- I'll give you a URL to open in your browser
+
+## Common Things You Can Ask
+
+### Finding and Loading Data
+
+**Search for Hi-C maps:**
+- "Find human hg38 contact maps"
+- "Show me K562 cell line maps"
+- "Search for mouse heart tissue Hi-C data"
+- "What maps are available from ENCODE?"
+
+**Load a specific map:**
+- "Load this map" (after searching)
+- "Load the first result"
+- "Load map number 3"
+
+**Load from a URL:**
+- "Load this Hi-C file: [URL]"
+- "Load a map from [URL] with KR normalization"
+
+### Exploring the Genome
+
+**Navigate to specific locations:**
+- "Go to chromosome 1"
+- "Show me chr1:1000000-2000000"
+- "Navigate to BRCA1"
+- "Jump to the GATA4 gene"
+- "Show me chromosome 1 from position 1000 to 2000"
+
+**Zoom:**
+- "Zoom in"
+- "Zoom out"
+- "Zoom in on the center"
+
+### Visualizing Data
+
+**Change colors:**
+- "Set the foreground color to red"
+- "Make the background black"
+- "Use blue (#0000ff) for the map"
+
+**Load additional tracks:**
+- "Add a gene track"
+- "Load this annotation file: [URL]"
+- "Add this bigWig track: [URL]"
+
+### Working with Sessions
+
+**Save your work:**
+- "Save this session"
+- "Save to my Desktop"
+- "Save to [file path]"
+
+**Share your visualization:**
+- "Create a shareable URL"
+- "Give me a link to share this"
+
+**Load a saved session:**
+- "Load this session: [paste JSON]"
+- "Load session from [URL]"
+- "Load this session file" (attach a .json file)
+
+### Advanced Workflows
+
+**Find complementary data:**
+- "What other experiments are available for this biosample?"
+- "Show me ChIP-seq data for this cell line"
+- "Find enhancer marks (H3K27ac) for this sample"
+
+**Compare maps:**
+- "Load a control map from [URL]"
+- "Compare this map with [another map]"
+
+**Get information:**
+- "What data sources are available?"
+- "Tell me about this map"
+- "What are the statistics for ENCODE data?"
+
+## Tips
+
+- **Be natural:** Just describe what you want to do in plain language
+- **I'll guide you:** If something needs clarification, I'll ask
+- **Context matters:** I remember what we've been working on
+- **Combine requests:** You can ask for multiple things at once
+
+## Example Workflow
+
+You: "I want to explore Hi-C data from heart tissue"
+
+Me: I'll search for heart-related experiments, show you options, help you select files, configure normalization, and suggest relevant annotations and complementary data.
+
+You: "Load the left ventricle map with SCALE normalization"
+
+Me: I'll load it with the recommended settings and offer to add gene tracks and annotations.
+
+## Need Help?
+
+Just ask:
+- "How do I..."
+- "What can I do?"
+- "Show me examples"
+- "Help me get started"
+
+I'm here to help you explore genomic data efficiently!`;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: guide
+        }
+      ]
+    };
+  }
+);
+
 // Register tool: list_data_sources
 mcpServer.registerTool(
   'list_data_sources',
