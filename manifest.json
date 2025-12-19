@@ -17,7 +17,10 @@
       "env": {
         "BROWSER_URL": "https://juicebox-mcp.netlify.app/",
         "MCP_PORT": "3010",
-        "WS_PORT": "3011"
+        "WS_PORT": "3011",
+        "TINYURL_API_KEY": "epZD3yUL8AN36W7ML3T7zWEebf7ePuDTVhCl1CgQM6xuMRBJxxoFckEXLx0N",
+        "TINYURL_DOMAIN": "t.3dg.io",
+        "TINYURL_ENDPOINT": "https://api.tinyurl.com/create"
       }
     }
   }
