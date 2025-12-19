@@ -1,6 +1,6 @@
 {
   "name": "juicebox-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "author": {
     "name": "Jim Robinson"
@@ -17,21 +17,18 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-
     "build:netlify": "vite build --config vite.config.netlify.js",
     "preview:netlify": "vite preview --config vite.config.netlify.js",
-
     "build:mcpb": "node esbuild.config.js && node build-mcpb.js",
     "build:mcpb:bundle": "node esbuild.config.js",
     "build:mcpb:package": "node build-mcpb.js",
     "start:mcpb": "node dist/juicebox-mcp-server.js",
-    
     "mcp:server": "node server.js",
-
+    "version:sync": "node scripts/sync-version-from-github.js",
+    "version:sync:tag": "node scripts/sync-version-from-github.js --tag",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run"
-
   },
   "keywords": [
     "conformation capture",

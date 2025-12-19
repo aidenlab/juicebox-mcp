@@ -347,7 +347,7 @@ function broadcastToClients(command) {
 // Create MCP server
 const mcpServer = new McpServer({
   name: 'juicebox-server',
-  version: '1.0.0'
+  version: '1.1.0'
 });
 
 // Register MCP resources for data source configurations
