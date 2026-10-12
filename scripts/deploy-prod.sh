@@ -34,7 +34,8 @@ echo "juicebox-mcp $(git -C "$WORK/mcp" rev-parse --short HEAD), juicebox-web $(
 (cd "$WORK/mcp" && npm install --no-audit --no-fund --loglevel=error)
 (cd "$WORK/mcp/packages/server" && npx wrangler deploy --env prod --message "$TAG")
 
-(cd "$WORK/web" && npm ci --no-audit --no-fund --loglevel=error)
+# juicebox-web depends on igvteam/infinite-table by git URL; npm >= 12 refuses git deps unless allowed.
+(cd "$WORK/web" && npm ci --allow-git=root --no-audit --no-fund --loglevel=error)
 WEB_DIR="$WORK/web" PROJECT=juicebot-web VITE_WS_URL=wss://juicebot-mcp.3dg.io/ws \
   "$WORK/mcp/scripts/deploy-web-dev.sh"
 echo "released $TAG: https://juicebot.3dg.io/ and https://juicebot-mcp.3dg.io/mcp"
