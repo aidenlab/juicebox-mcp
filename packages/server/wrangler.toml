@@ -147,3 +147,31 @@ ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]
+
+# Juicebot production: Worker `juicebot-mcp` on juicebot-mcp.3dg.io, page Pages `juicebot-web` on
+# juicebot.3dg.io. Deployed only from a release tag by scripts/deploy-prod.sh, never by hand:
+# `scripts/deploy-prod.sh prod-YYYY-MM-DD`. Secrets: `wrangler secret put <NAME> --env prod`.
+[env.prod]
+name = "juicebot-mcp"
+routes = [
+  { pattern = "juicebot-mcp.3dg.io", custom_domain = true },
+]
+workers_dev = false
+preview_urls = false
+
+[[env.prod.durable_objects.bindings]]
+name = "WEBSOCKET_ROOM"
+class_name = "WebSocketRoom"
+
+[[env.prod.durable_objects.bindings]]
+name = "MCP_SESSION"
+class_name = "McpSession"
+
+[env.prod.vars]
+BROWSER_URL = "https://juicebot.3dg.io/"
+TINYURL_DOMAIN = "t.3dg.io"
+TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
+ALLOWED_ORIGINS = [
+  "https://juicebot.3dg.io",
+  "https://juicebot-web.pages.dev",
+]
