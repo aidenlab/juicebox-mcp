@@ -559,8 +559,8 @@ export function registerTools(mcpServer, deps) {
     'get_juicebox_url',
     {
       title: 'Get Juicebox URL',
-      // PROTOTYPE (proto/first-launch): built-in browser only, never Claude in Chrome; no link, room or QR repeated in the reply.
-      description: 'Get the join link that opens Juicebox connected to the room bound to this MCP session. Use this when users ask how to connect, how to open the Juicebox app, or say things like "Hello juicebox", "Hello juicebot", "Open juicebox", "Show me juicebox", "Launch juicebox", etc. A card is shown to the user with an Open Juicebox button. If, and only if, you have the built-in browser of the Claude desktop app (the browser panel beside the conversation), open the join link in it right away: the page connects to this session\'s room and later tool calls redraw it there. Never use Claude in Chrome or any other browser tool for this; if the built-in browser is not available, do not try anything else. Do not repeat the link, the room id or a QR code in your reply.',
+      // Host-neutral: the model opens the link only in an in-app browser; otherwise the reply carries the link.
+      description: 'Get the join link that opens Juicebox connected to the room bound to this MCP session. Use this when users ask how to connect, how to open the Juicebox app, or say things like "Hello juicebox", "Hello juicebot", "Open juicebox", "Show me juicebox", "Launch juicebox", etc. A card with an Open Juicebox button is shown to the user. If you have a browser that shows pages inside this app, beside the conversation, open the join link in it right away: the page connects to this session\'s room and later tool calls redraw it there. Use only such an in-app browser; a tool that drives the user\'s own web browser is not one. Do not repeat the room id or a QR code.',
       inputSchema: {},
       _meta: TOOL_META
     },
@@ -579,7 +579,7 @@ export function registerTools(mcpServer, deps) {
       const content = [
         {
           type: 'text',
-          text: `Juicebox join link for room ${roomId}:\n${connectionUrl}\n\nThe user already sees a card for this. Next step: if you have the Claude desktop app's built-in browser, open this link in it now so the viewer shows in the panel beside the conversation. Never use Claude in Chrome or another browser tool, and if the built-in browser is unavailable do not attempt to open the link at all. Then reply in one short sentence (Juicebox is opening in the panel, or: press Open Juicebox) and ask what to load. Do not repeat the link, room id or QR.`
+          text: `Juicebox join link for room ${roomId}:\n${connectionUrl}\n\nThe user already sees a card for this. Next step: if you have a browser that shows pages inside this app, beside the conversation, open this link in it now. Then reply in one short sentence: either "Juicebox is opening beside the conversation", or, if you did not open it, "Press Open Juicebox or use this link: [Open Juicebox](${connectionUrl})". Ask what to load. Do not repeat the room id or QR.`
         },
         {
           type: 'resource_link',

@@ -505,6 +505,20 @@ describe('join link and join_room', () => {
     expect(resourceLink.uri).toBe(link);
   });
 
+  it('get_juicebox_url and its card name no host app, and the reply can carry the link as a markdown link', async () => {
+    const session = await newSession();
+    const tools = (await (await rpc('tools/list', {}, { 'mcp-session-id': session })).json()).result.tools;
+    const description = tools.find((t) => t.name === 'get_juicebox_url').description;
+    const view = (await (await rpc('resources/read', { uri: 'ui://juicebox/join' }, { 'mcp-session-id': session })).json()).result.contents[0];
+    const result = await callTool(session, 'get_juicebox_url');
+    const link = text(result).match(/https?:\/\/\S+/)[0];
+
+    for (const words of [description, text(result), view.text]) expect(words).not.toMatch(/claude|chatgpt|codex|chrome|openai/i);
+    expect(text(result)).toContain(`[Open Juicebox](${link})`);
+    // The card reads the host's answer to the open request and falls back to the link and QR.
+    expect(view.text).toContain('isError');
+  });
+
   it('after join_room, get_juicebox_url returns that room\'s join link', async () => {
     const session = await newSession();
     const room = await newSession(); // any other room id

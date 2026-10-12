@@ -1,10 +1,13 @@
 /**
  * The MCP App view (SEP-1865) for get_juicebox_url: a card with the join link
  * and its QR code, shown in the app pane by hosts that render MCP Apps (Claude
- * Desktop, claude.ai, Cowork). The link opens through the host (`ui/open-link`),
- * which Claude routes to its browser pane. Claude's sandbox forbids framing other
- * origins (`frame-src 'self' blob: data:`), so the viewer itself is not embedded.
- * Hosts without MCP Apps ignore the metadata and use the text link.
+ * Desktop, claude.ai, Cowork, ChatGPT). The button opens the link through the host
+ * (`ui/open-link`), which decides where it lands (a browser pane, the user's
+ * browser, a confirmation); the card names no host. Opening by itself on arrival is
+ * left to the model's in-app browser tool: a card-side open-link without a click
+ * prompted and landed in the external browser. Claude's sandbox forbids framing
+ * other origins (`frame-src 'self' blob: data:`), so the viewer itself is not
+ * embedded. Hosts without MCP Apps ignore the metadata and use the text link.
  */
 
 export const VIEW_URI = 'ui://juicebox/join';
@@ -31,39 +34,45 @@ export const VIEW_HTML = `<!DOCTYPE html>
   details > * { margin-top: 6px; }
 </style></head>
 <body>
-<!-- PROTOTYPE (proto/first-launch): one message or one button; QR, room and link collapsed. -->
+<!-- One message and one button; the other ways to open appear once the button was pressed. -->
 <div id="text">
   <div id="status">Waiting for the join link…</div>
   <button id="open" hidden>Open Juicebox</button>
-  <!-- "Other ways to open" is switched off, not removed; restore it together with the commented lines in the script below.
   <details id="more" hidden><summary>Other ways to open</summary>
     <div id="room"></div>
-    <a id="link" href="#"></a>
+    <a id="link" href="#" target="_blank" rel="noopener"></a>
     <div><img id="qr" alt="QR code of the join link" hidden></div>
     <div id="hint" hidden>Scan the QR code to open the same room on a phone or another device.</div>
   </details>
-  -->
 </div>
 <script type="module">
   import { App } from "${APP_CLIENT}";
   const $ = (id) => document.getElementById(id);
   const app = new App({ name: "Juicebox", version: "1.0.0" });
-  let joinUrl, room, qrPng;
-  const open = (e) => { e?.preventDefault(); if (joinUrl) app.openLink({ url: joinUrl }); };
+  let joinUrl, room, qrPng, openFailed = false;
+  // The host answers the open request; on a refusal (or no answer) the link and QR are the way in.
+  const open = async (e) => {
+    e?.preventDefault();
+    if (!joinUrl) return;
+    $("more").hidden = false;
+    try { openFailed = Boolean((await app.openLink({ url: joinUrl }))?.isError); } catch (err) { openFailed = true; }
+    if (openFailed) $("more").open = true;
+    render();
+  };
   const render = () => {
     let ctx;
     try { ctx = app.getHostContext?.(); } catch (e) { ctx = undefined; }
     if (!joinUrl) return;
     const desktop = ctx?.platform === "desktop";
-    $("status").textContent = desktop
-      ? "Juicebox should open in the panel on the right; if it does not, press Open Juicebox. If Claude asks, choose \u201cAlways allow for this website\u201d."
+    $("status").textContent = openFailed
+      ? "Could not open Juicebox from here: use the link below or scan the code."
+      : desktop
+      ? "Juicebox should open in the panel on the right; if it does not, press Open Juicebox. If asked, choose to always allow this website."
       : "Juicebox is ready.";
     $("open").hidden = false;
-    // "Other ways to open" (switched off):
-    // $("room").textContent = "Juicebox room " + room;
-    // $("link").textContent = desktop ? "Open in a separate browser window" : joinUrl; $("link").href = joinUrl;
-    // if (qrPng) { $("qr").src = "data:image/png;base64," + qrPng; $("qr").hidden = false; $("hint").hidden = false; }
-    // $("more").hidden = false;
+    $("room").textContent = "Juicebox room " + room;
+    $("link").textContent = joinUrl; $("link").href = joinUrl;
+    if (qrPng) { $("qr").src = "data:image/png;base64," + qrPng; $("qr").hidden = false; $("hint").hidden = false; }
   };
   app.ontoolresult = ({ structuredContent: sc, content }) => {
     joinUrl = sc?.joinUrl ?? content?.find((c) => c.type === "text")?.text.match(/https?:\\/\\/\\S+/)?.[0];
@@ -72,7 +81,6 @@ export const VIEW_HTML = `<!DOCTYPE html>
     render();
   };
   app.onhostcontextchanged = render;
-  // $("link").onclick = open; // "Other ways to open" (switched off)
   $("open").onclick = open;
   await app.connect();
   render();
