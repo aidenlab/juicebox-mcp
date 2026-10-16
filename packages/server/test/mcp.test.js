@@ -287,7 +287,7 @@ describe('command tools: what the page receives (ticket 36)', () => {
       const result = await callTool(await newSession(), 'goto_locus', { locus: 'chr1' });
 
       expect(result.isError).toBe(true);
-      expect(text(result)).toBe('Error: No page is connected to this room. Use get_juicebox_url to get the join link and open it in a browser.');
+      expect(text(result)).toBe('Error: No page is connected to this room. Call get_juicebox_url and open the join link in the browser panel beside the conversation (in Claude Desktop, its built-in browser), then retry this tool once the page has connected.');
     });
   });
 });
@@ -505,7 +505,7 @@ describe('join link and join_room', () => {
     expect(resourceLink.uri).toBe(link);
   });
 
-  it('get_juicebox_url and its card name no host app, and the reply can carry the link as a markdown link', async () => {
+  it('get_juicebox_url asks the model to open the side panel first, the card\'s button being the fallback', async () => {
     const session = await newSession();
     const tools = (await (await rpc('tools/list', {}, { 'mcp-session-id': session })).json()).result.tools;
     const description = tools.find((t) => t.name === 'get_juicebox_url').description;
@@ -513,9 +513,14 @@ describe('join link and join_room', () => {
     const result = await callTool(session, 'get_juicebox_url');
     const link = text(result).match(/https?:\/\/\S+/)[0];
 
-    for (const words of [description, text(result), view.text]) expect(words).not.toMatch(/claude|chatgpt|codex|chrome|openai/i);
+    for (const words of [description, text(result)]) {
+      expect(words).toContain('built-in browser');
+      expect(words).toMatch(/deferred/);
+      expect(words).toMatch(/only the fallback/);
+    }
     expect(text(result)).toContain(`[Open Juicebox](${link})`);
-    // The card reads the host's answer to the open request and falls back to the link and QR.
+    // The card names no host; it reads the host's answer to the open request and falls back to the link and QR.
+    expect(view.text).not.toMatch(/claude|chatgpt|codex|chrome|openai/i);
     expect(view.text).toContain('isError');
   });
 

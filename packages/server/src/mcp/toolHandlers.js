@@ -386,7 +386,7 @@ export function registerTools(mcpServer, deps) {
     log
   } = deps;
 
-  const NO_PAGE = 'No page is connected to this room. Use get_juicebox_url to get the join link and open it in a browser.';
+  const NO_PAGE = 'No page is connected to this room. Call get_juicebox_url and open the join link in the browser panel beside the conversation (in Claude Desktop, its built-in browser), then retry this tool once the page has connected.';
 
   /**
    * Send a command to the bound room and report what the first page's ack said:
@@ -546,7 +546,8 @@ export function registerTools(mcpServer, deps) {
             `Current Session ID: ${sessionId || 'none'}\n` +
             `Room: ${(await room.current()) || 'none'}\n` +
             `Browser Connected: ${connected ? 'Yes' : 'No'}\n` +
-            `Browser URL: ${browserUrl}`
+            `Browser URL: ${browserUrl}` +
+            (connected ? '' : '\n\nNo page is connected: call get_juicebox_url and open the join link in the browser panel beside the conversation.')
         }]
       };
     }
@@ -559,8 +560,8 @@ export function registerTools(mcpServer, deps) {
     'get_juicebox_url',
     {
       title: 'Get Juicebox URL',
-      // Host-neutral: the model opens the link only in an in-app browser; otherwise the reply carries the link.
-      description: 'Get the join link that opens Juicebox connected to the room bound to this MCP session. Use this when users ask how to connect, how to open the Juicebox app, or say things like "Hello juicebox", "Hello juicebot", "Open juicebox", "Show me juicebox", "Launch juicebox", etc. A card with an Open Juicebox button is shown to the user. If you have a browser that shows pages inside this app, beside the conversation, open the join link in it right away: the page connects to this session\'s room and later tool calls redraw it there. Use only such an in-app browser; a tool that drives the user\'s own web browser is not one. Do not repeat the room id or a QR code.',
+      // The side panel is the experience; the card's button is only the fallback. The model opens the panel: neither the server nor the card can.
+      description: 'Get the join link that opens Juicebox connected to the room bound to this MCP session, and open Juicebox beside the conversation. Use this first when users ask how to connect, how to open the Juicebox app, or say things like "Hello juicebox", "Hello juicebot", "Open juicebox", "Show me juicebox", "Launch juicebox", etc., and before loading anything when no page is connected. A card with an Open Juicebox button is shown to the user, but the button is only the fallback: right after this call, open the join link yourself in the browser panel that shows pages inside this app, beside the conversation (in Claude Desktop, its built-in browser). If that browser\'s tools are deferred or must be enabled, load or enable them first; do not conclude you have no such browser without checking. The page connects to this session\'s room and later tool calls redraw it there. A tool that drives the user\'s own web browser (such as a Chrome extension) is not such a browser. Only if no in-app browser exists, or opening fails, point the user to the Open Juicebox button. Do not repeat the room id or a QR code.',
       inputSchema: {},
       _meta: TOOL_META
     },
@@ -579,7 +580,7 @@ export function registerTools(mcpServer, deps) {
       const content = [
         {
           type: 'text',
-          text: `Juicebox join link for room ${roomId}:\n${connectionUrl}\n\nThe user already sees a card for this. Next step: if you have a browser that shows pages inside this app, beside the conversation, open this link in it now. Then reply in one short sentence: either "Juicebox is opening beside the conversation", or, if you did not open it, "Press Open Juicebox or use this link: [Open Juicebox](${connectionUrl})". Ask what to load. Do not repeat the room id or QR.`
+          text: `Juicebox join link for room ${roomId}:\n${connectionUrl}\n\nNext step, required: open this link now in the browser panel beside the conversation (in Claude Desktop, its built-in browser; load or enable its tools first if they are deferred). Do not skip this because the card has a button: the button is only the fallback. Then reply in one short sentence: "Juicebox is opening beside the conversation", or, only if no in-app browser exists or opening failed, "Press Open Juicebox or use this link: [Open Juicebox](${connectionUrl})". If the user asked to load something, do it next; if a tool reports that no page is connected, give the page a moment to connect and retry. Do not repeat the room id or QR.`
         },
         {
           type: 'resource_link',
