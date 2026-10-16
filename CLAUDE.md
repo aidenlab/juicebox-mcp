@@ -30,6 +30,7 @@ npm run dev:server             # wrangler dev on :8787
 npm run deploy:server          # wrangler deploy (the prototype Worker on jbmcp.3dg.io)
 (cd packages/server && npx wrangler deploy --env dev)   # the Juicebot dev Worker, juicebot-mcp-dev.3dg.io
 scripts/deploy-web-dev.sh      # build ../juicebox-web (fork master) → Pages juicebot-web-dev, juicebot-dev.3dg.io
+scripts/deploy-test.sh <web-tag> [mcp-ref]   # dev stack from a juicebox-web tag (+ dev Worker at mcp-ref, default HEAD; WORKER=0 skips it)
 scripts/deploy-prod.sh prod-YYYY-MM-DD   # Juicebot production from that tag on both repos (Worker juicebot-mcp + Pages juicebot-web)
 scripts/deploy-wizard.sh       # maintainer deploy + onboarding, interactive (login, secrets, Pages var, clients); DEPLOY_ENV=dev
 ```
