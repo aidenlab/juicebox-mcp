@@ -20,6 +20,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_DIR="${WEB_DIR:-$REPO_ROOT/../juicebox-web}"
 PROJECT="${PROJECT:-juicebot-web-dev}"
+# Pages deploys run outside packages/server, so wrangler.toml's account_id is passed on here.
+ACCOUNT_ID="$(sed -n 's/^account_id = "\(.*\)"$/\1/p' "$REPO_ROOT/packages/server/wrangler.toml")"
+[[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" || -z "$ACCOUNT_ID" ]] || export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
 VITE_WS_URL="${VITE_WS_URL:-wss://juicebot-mcp-dev.3dg.io/ws}"
 cd "$WEB_DIR"
 echo "building $WEB_DIR with VITE_WS_URL=$VITE_WS_URL"

@@ -2,6 +2,9 @@ name = "juicebox-mcp"
 main = "src/index.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
+# The Cloudflare account that owns 3dg.io and the Juicebot Pages projects; the login
+# reaches more than one, and wrangler will not choose in a script. Every [env.*] inherits it.
+account_id = "1eadb18bb8557fd1bd06b1d0310a902e"
 
 # MCP (/mcp) and page WebSockets (/ws) are served on this custom domain (design §6.4).
 routes = [
