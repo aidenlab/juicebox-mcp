@@ -104,6 +104,14 @@ HTTP", URL `http://localhost:8787/mcp`.
 
 Nothing is deployed and nothing needs restarting between iterations.
 
+The connector is only a URL; nothing is installed in Claude, so nothing is reinstalled when the
+page or the server changes. Two exceptions:
+
+- Restarting `cloudflared` changes the tunnel address; remove the connector and add it again.
+  Leave the tunnel running between iterations to avoid this.
+- A server change to the tool list (a tool added, or a name, description or schema changed)
+  reaches Claude in a new chat. An open chat may keep the list it fetched when it started.
+
 ## Check each part
 
 | Part | Command | Good result |
