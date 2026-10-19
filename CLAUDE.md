@@ -31,8 +31,8 @@ npm run deploy:server          # wrangler deploy (the prototype Worker on jbmcp.
 (cd packages/server && npx wrangler deploy --env dev)        # the Juicebot dev Worker (web stack), juicebot-mcp-dev.3dg.io
 (cd packages/server && npx wrangler deploy --env view-dev)   # the view stack's Worker, juicebot-view-mcp-dev.3dg.io
 scripts/deploy-web-dev.sh web  # build ../juicebox-web (fork master) → Pages juicebot-web-dev, juicebot-dev.3dg.io
-scripts/deploy-web-dev.sh view # build ../juicebox-view → Pages juicebot-view-dev, juicebot-view-dev.3dg.io
-scripts/deploy-test.sh <web|view> <tag> [mcp-ref]   # one dev stack from a Page tag (+ its Worker at mcp-ref, default HEAD; WORKER=0 skips it)
+scripts/deploy-web-dev.sh view # build ../juicebox-view → Pages juicebot-view-dev, juicebot-view-dev.pages.dev
+scripts/deploy-test.sh <web|view> <page-repo> [branch-or-tag] [mcp-ref]   # one dev stack from your clone of juicebox-web or juicebox-view at a branch or tag (default its main branch) (+ its Worker at mcp-ref, default HEAD; WORKER=0 skips it)
 scripts/deploy-prod.sh prod-YYYY-MM-DD   # Juicebot production from that tag on both repos (Worker juicebot-mcp + Pages juicebot-web)
 scripts/deploy-wizard.sh       # maintainer deploy + onboarding, interactive (login, secrets, Pages var, clients); DEPLOY_ENV=dev
 ```
