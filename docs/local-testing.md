@@ -3,6 +3,9 @@
 Run your branch's MCP server on your own machine and drive a real Juicebox viewer
 with it, from Claude Code, Claude Desktop or claude.ai. No Cloudflare deploy.
 
+This sheet is for juicebox-web, which is frozen. For juicebox-view, its replacement, see
+`docs/juicebox-view-development.md`.
+
 ## The moving parts
 
 Four things have to be in place. Three are processes you start; one is a setting in Claude.

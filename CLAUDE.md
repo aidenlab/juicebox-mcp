@@ -90,6 +90,7 @@ A command tool (one that sends one command to the pages) is a row of `COMMAND_TO
 ## Further docs
 
 - `CODING_STANDARDS.md` — judgement rules applied at code review (the mechanical ones are the tests and CI).
+- `docs/juicebox-view-development.md` — the juicebox-view iteration loop: local relay + juicebox-view, the round trip, deploying to the view dev stack.
 - `docs/local-testing.md` — local relay + page, and driving the dev stack with `scripts/dev-check.mjs`.
 - `docs/test-deployment.md` — the two dev stacks (web and view) and deploying a tag to either with `scripts/deploy-test.sh`.
 - `docs/design/ARCHITECTURE_V2.md` — the accepted design (protocol tables in §5, repo plan in §9).
