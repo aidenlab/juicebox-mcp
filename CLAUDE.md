@@ -28,9 +28,11 @@ npm run test:run -- -t "substring of name"                # one test
 # Server
 npm run dev:server             # wrangler dev on :8787
 npm run deploy:server          # wrangler deploy (the prototype Worker on jbmcp.3dg.io)
-(cd packages/server && npx wrangler deploy --env dev)   # the Juicebot dev Worker, juicebot-mcp-dev.3dg.io
-scripts/deploy-web-dev.sh      # build ../juicebox-web (fork master) → Pages juicebot-web-dev, juicebot-dev.3dg.io
-scripts/deploy-test.sh <web-tag> [mcp-ref]   # dev stack from a juicebox-web tag (+ dev Worker at mcp-ref, default HEAD; WORKER=0 skips it)
+(cd packages/server && npx wrangler deploy --env dev)        # the Juicebot dev Worker (web stack), juicebot-mcp-dev.3dg.io
+(cd packages/server && npx wrangler deploy --env view-dev)   # the view stack's Worker, juicebot-view-mcp-dev.3dg.io
+scripts/deploy-web-dev.sh web  # build ../juicebox-web (fork master) → Pages juicebot-web-dev, juicebot-dev.3dg.io
+scripts/deploy-web-dev.sh view # build ../juicebox-view → Pages juicebot-view-dev, juicebot-view-dev.3dg.io
+scripts/deploy-test.sh <web|view> <tag> [mcp-ref]   # one dev stack from a Page tag (+ its Worker at mcp-ref, default HEAD; WORKER=0 skips it)
 scripts/deploy-prod.sh prod-YYYY-MM-DD   # Juicebot production from that tag on both repos (Worker juicebot-mcp + Pages juicebot-web)
 scripts/deploy-wizard.sh       # maintainer deploy + onboarding, interactive (login, secrets, Pages var, clients); DEPLOY_ENV=dev
 ```
@@ -89,7 +91,7 @@ A command tool (one that sends one command to the pages) is a row of `COMMAND_TO
 
 - `CODING_STANDARDS.md` — judgement rules applied at code review (the mechanical ones are the tests and CI).
 - `docs/local-testing.md` — local relay + page, and driving the dev stack with `scripts/dev-check.mjs`.
-- `docs/test-deployment.md` — deploying a juicebox-web tag to the dev stack with `scripts/deploy-test.sh`.
+- `docs/test-deployment.md` — the two dev stacks (web and view) and deploying a tag to either with `scripts/deploy-test.sh`.
 - `docs/design/ARCHITECTURE_V2.md` — the accepted design (protocol tables in §5, repo plan in §9).
 - `docs/adr/` — architecture decision records.
 - Prototype-era notes (`docs/mcp-notes/`, `docs/datasource-notes/`, `docs/development-notes/`) are on branch `prototype` only (`git show prototype:docs/…`); still accurate for the search pipeline and MCP tool reference, stale where they describe the Node server or the vendored viewer.
