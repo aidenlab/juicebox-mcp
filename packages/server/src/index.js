@@ -134,7 +134,8 @@ async function handleMcpRequest(request, env) {
 
     // Create a new MCP server for this request
     const mcpServer = new McpServer({
-      name: 'juicebox-server',
+      // SERVER_NAME tells side-by-side stacks apart in a host's connector list ([env.view-dev]).
+      name: env.SERVER_NAME || 'juicebox-server',
       version: '1.1.0',
       // The juicebox-web favicon; hosts that render serverInfo icons show it beside the connector.
       icons: [{ src: 'https://aidenlab.org/favicon.ico', mimeType: 'image/x-icon', sizes: ['16x16'] }]

@@ -151,6 +151,44 @@ ALLOWED_ORIGINS = [
   "http://127.0.0.1:5173",
 ]
 
+# ── Development deployment: "Juicebot view dev" ──────────────────────────────
+# The contender stack, side by side with [env.dev] while juicebox-view is compared with
+# juicebox-web (docs/test-deployment.md): Worker juicebot-view-mcp-dev at
+# https://juicebot-view-mcp-dev.3dg.io, paired with the Pages project juicebot-view-dev at
+# https://juicebot-view-dev.3dg.io/ (aidenlab/juicebox-view). It shares nothing with
+# [env.dev]: its own Rooms, sessions and secrets, and only its own Page is allowed.
+# `scripts/deploy-test.sh view <tag>`; secrets with `wrangler secret put <NAME> --env view-dev`.
+[env.view-dev]
+name = "juicebot-view-mcp-dev"
+routes = [
+  { pattern = "juicebot-view-mcp-dev.3dg.io", custom_domain = true },
+]
+workers_dev = false
+preview_urls = false
+
+[[env.view-dev.durable_objects.bindings]]
+name = "WEBSOCKET_ROOM"
+class_name = "WebSocketRoom"
+
+[[env.view-dev.durable_objects.bindings]]
+name = "MCP_SESSION"
+class_name = "McpSession"
+
+[env.view-dev.vars]
+# The MCP serverInfo name, so this stack's connector is told apart from [env.dev]'s.
+SERVER_NAME = "juicebot-view-server"
+# For a local juicebox-view dev server instead, override in .dev.vars or use
+# http://localhost:5173/.
+BROWSER_URL = "https://juicebot-view-dev.3dg.io/"
+TINYURL_DOMAIN = "t.3dg.io"
+TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
+ALLOWED_ORIGINS = [
+  "https://juicebot-view-dev.3dg.io",
+  "https://juicebot-view-dev.pages.dev",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]
+
 # Juicebot production: Worker `juicebot-mcp` on juicebot-mcp.3dg.io, page Pages `juicebot-web` on
 # juicebot.3dg.io. Deployed only from a release tag by scripts/deploy-prod.sh, never by hand:
 # `scripts/deploy-prod.sh prod-YYYY-MM-DD`. Secrets: `wrangler secret put <NAME> --env prod`.
