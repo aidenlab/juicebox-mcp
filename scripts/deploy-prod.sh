@@ -1,14 +1,25 @@
 #!/usr/bin/env bash
 # Deploy Juicebot production from one release tag, never from a working tree:
-#   scripts/deploy-prod.sh prod-YYYY-MM-DD
-# The tag must exist on origin in both juicebox-mcp and the juicebox-web fork (same name). Both
-# are checked out into throwaway worktrees at the tag; the Worker `juicebot-mcp` (wrangler
-# --env prod, juicebot-mcp.3dg.io) and the Pages project `juicebot-web` (juicebot.3dg.io) are
-# deployed from there. Roll back by deploying the previous tag. Releasing: tag juicebox-mcp
-# main and juicebox-web master with the same `prod-` name, push both tags, run this.
+#   scripts/deploy-prod.sh prod-YYYY-MM-DD [--repo <path>]
+# --repo is the juicebox-web fork's clone (default ../juicebox-web). The tag must exist on origin
+# in both juicebox-mcp and the juicebox-web fork (same name). Both are checked out into throwaway
+# worktrees at the tag; the Worker `juicebot-mcp` (wrangler --env prod, juicebot-mcp.3dg.io) and
+# the Pages project `juicebot-web` (juicebot.3dg.io) are deployed from there. Roll back by
+# deploying the previous tag. Releasing: tag juicebox-mcp main and juicebox-web master with the
+# same `prod-` name, push both tags, run this.
 set -euo pipefail
 
-TAG="${1:?usage: scripts/deploy-prod.sh prod-YYYY-MM-DD}"
+USAGE="usage: scripts/deploy-prod.sh prod-YYYY-MM-DD [--repo <path>]"
+ARGS=()
+while (($#)); do
+  case "$1" in
+    --repo) WEB_REPO="${2:?$USAGE}"; shift 2 ;;
+    --repo=*) WEB_REPO="${1#--repo=}"; shift ;;
+    *) ARGS+=("$1"); shift ;;
+  esac
+done
+set -- "${ARGS[@]+"${ARGS[@]}"}"
+TAG="${1:?$USAGE}"
 [[ "$TAG" =~ ^prod-[0-9]{4}-[0-9]{2}-[0-9]{2}(\.[0-9]+)?$ ]] || { echo "not a release tag: $TAG (prod-YYYY-MM-DD[.N])" >&2; exit 1; }
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

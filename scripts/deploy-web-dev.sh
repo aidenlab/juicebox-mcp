@@ -2,16 +2,16 @@
 # Build a dev stack's Page and upload it to that stack's Cloudflare Pages project. There are two
 # stacks side by side while juicebox-view is compared with juicebox-web (docs/test-deployment.md):
 #
-#   web   the juicebox-web fork (../juicebox-web, or WEB_REPO=) → Pages "juicebot-web-dev",
+#   web   the juicebox-web fork (../juicebox-web, or --repo) → Pages "juicebot-web-dev",
 #         https://juicebot-dev.3dg.io/, relay wss://juicebot-mcp-dev.3dg.io/ws
-#   view  juicebox-view (../juicebox-view, or VIEW_REPO=) → Pages "juicebot-view-dev",
-#         https://juicebot-view-dev.3dg.io/, relay wss://juicebot-view-mcp-dev.3dg.io/ws
+#   view  juicebox-view (../juicebox-view, or --repo) → Pages "juicebot-view-dev",
+#         https://juicebot-view-dev.pages.dev/, relay wss://juicebot-view-mcp-dev.3dg.io/ws
 #
-#   scripts/deploy-web-dev.sh <web|view>
-#   PAGE_DIR=/path/to/checkout scripts/deploy-web-dev.sh view
+#   scripts/deploy-web-dev.sh <web|view> [--repo <path>]
+#   scripts/deploy-web-dev.sh view --repo /path/to/checkout
 #
 # Direct upload, not a git build, so the npm pins in the Page's package.json are what ships.
-# PAGE_DIR (default: the stack's repo; WEB_DIR is still read for web), PROJECT and VITE_WS_URL
+# --repo (else PAGE_DIR, else the stack's repo; WEB_DIR is still read for web), PROJECT and VITE_WS_URL
 # override the stack's defaults; scripts/deploy-prod.sh uses them to release the web Page.
 #
 # The demo stack (PROJECT=juicebox-web-dev at https://juicebox-v2.3dg.io/,
@@ -26,6 +26,16 @@
 # in packages/server; its BROWSER_URL points at this Page and ALLOWED_ORIGINS lists it.
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+USAGE="usage: scripts/deploy-web-dev.sh <web|view> [--repo <path>]"
+ARGS=()
+while (($#)); do
+  case "$1" in
+    --repo) PAGE_DIR="${2:?$USAGE}"; shift 2 ;;
+    --repo=*) PAGE_DIR="${1#--repo=}"; shift ;;
+    *) ARGS+=("$1"); shift ;;
+  esac
+done
+set -- "${ARGS[@]+"${ARGS[@]}"}"
 STACK="${1:-}"
 case "$STACK" in
   web)
@@ -37,9 +47,9 @@ case "$STACK" in
     PAGE_DIR="${PAGE_DIR:-${VIEW_REPO:-$REPO_ROOT/../juicebox-view}}"
     DEFAULT_PROJECT=juicebot-view-dev
     VITE_WS_URL="${VITE_WS_URL:-wss://juicebot-view-mcp-dev.3dg.io/ws}"
-    DOMAIN=juicebot-view-dev.3dg.io ;;
+    DOMAIN=juicebot-view-dev.pages.dev ;;
   *)
-    echo "usage: scripts/deploy-web-dev.sh <web|view>" >&2; exit 2 ;;
+    echo "$USAGE" >&2; exit 2 ;;
 esac
 PROJECT="${PROJECT:-$DEFAULT_PROJECT}"
 # Pages deploys run outside packages/server, so wrangler.toml's account_id is passed on here.
@@ -53,7 +63,7 @@ if [[ "$STACK" == web ]]; then
   grep -q "juicebox.aidenlab.org/shorten" dist/assets/*.js || { echo "built assets do not contain the jb-shortlink /shorten endpoint" >&2; exit 1; }
 fi
 npx wrangler pages deploy dist --project-name "$PROJECT" --branch main --commit-dirty=true
-if [[ "$PROJECT" == "$DEFAULT_PROJECT" ]]; then
+if [[ "$PROJECT" == "$DEFAULT_PROJECT" && "$DOMAIN" != "$PROJECT.pages.dev" ]]; then
   echo "$STACK Page live at https://$DOMAIN/ (https://$PROJECT.pages.dev/)"
 else
   echo "$STACK Page live at https://$PROJECT.pages.dev/"
