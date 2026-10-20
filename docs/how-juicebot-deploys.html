@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How Juicebot deploys</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: one 38rem reading column, notes in the right margin, figures across both. Blue for Pages, red for the Worker. */
+:root {
+  --bg: #f5f6f4;
+  --box: #ffffff;
+  --fg: #1b1d1c;
+  --muted: #636966;
+  --rule: #cdd2ce;
+  --pg: #2a5f9e;                /* Pages: files */
+  --wk: #b8231a;                /* the Worker: code */
+  --serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151716; --box: #1e2120; --fg: #e5e7e4; --muted: #9aa19c; --rule: #3b403d; --pg: #7fadea; --wk: #ff7566;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151716; --box: #1e2120; --fg: #e5e7e4; --muted: #9aa19c; --rule: #3b403d; --pg: #7fadea; --wk: #ff7566;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+.page {
+  max-width: 64rem;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 3.5rem 5rem;
+}
+.page :is(h1, h2, h3, p, ol, ul, .tablewrap) { max-width: 38rem; }
+
+h1 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 1rem;
+}
+.lede {
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 2.5rem;
+}
+h2 {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  margin: 3.25rem 0 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--fg);
+  text-wrap: balance;
+}
+p { margin: 0 0 1rem; }
+ol, ul { margin: 0 0 1rem; padding-left: 1.4rem; }
+li { margin-bottom: 0.4rem; }
+code { font-family: var(--mono); font-size: 0.84em; }
+.pg { color: var(--pg); }
+.wk { color: var(--wk); }
+a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 0.15em; }
+a:hover { text-decoration-color: currentColor; }
+a:focus-visible { outline: 2px solid var(--pg); outline-offset: 2px; }
+
+/* Contents */
+.toc {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  max-width: 38rem;
+  columns: 2 14rem;
+}
+.toc li { margin: 0 0 0.2rem; break-inside: avoid; }
+.toc a { text-decoration: none; color: var(--muted); }
+.toc a:hover { color: var(--fg); }
+
+/* Margin notes */
+.note {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 38rem;
+  margin: 0 0 1rem;
+}
+@media (min-width: 64rem) {
+  .note {
+    float: right;
+    clear: right;
+    width: 17rem;
+    margin: 0.35rem 0 1rem 2rem;
+  }
+}
+
+/* Figures */
+figure { clear: both; margin: 2rem 0 2.25rem; }
+.figwrap { overflow-x: auto; }
+svg.fig {
+  display: block;
+  width: 100%;
+  min-width: 46rem;
+  height: auto;
+  color: var(--fg);
+  font-family: var(--sans);
+}
+figcaption {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 38rem;
+  margin-top: 0.75rem;
+}
+figcaption b { color: var(--fg); font-weight: 600; }
+.fig text { fill: currentColor; font-size: 12.5px; }
+.fig .t-h { font-weight: 600; }
+.fig .t-s { font-size: 11px; fill: var(--muted); }
+.fig .t-m { font-family: var(--mono); font-size: 11px; }
+.fig .t-band { font-size: 10px; letter-spacing: 0.12em; fill: var(--muted); }
+.fig .tag { font-weight: 600; font-size: 12px; }
+.fig .t-n { font-weight: 600; font-size: 11px; fill: var(--muted); }
+/* A halo so labels stay legible where they cross a line. */
+.fig .k { paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+.fig .kb { paint-order: stroke; stroke: var(--box); stroke-width: 4px; stroke-linejoin: round; }
+.fig .cp { fill: var(--pg); }
+.fig .cw { fill: var(--wk); }
+.fig .bx { fill: var(--box); stroke: currentColor; stroke-width: 1; }
+.fig .bx-g { fill: var(--box); stroke: currentColor; stroke-width: 1.75; }
+.fig .bx-p { fill: var(--box); stroke: var(--pg); stroke-width: 1.25; }
+.fig .bx-w { fill: var(--box); stroke: var(--wk); stroke-width: 1.25; }
+.fig .bx-q { fill: none; stroke: var(--rule); stroke-width: 1; }
+.fig .win { fill: none; stroke: var(--muted); stroke-width: 1; }
+.fig .sep { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 4; }
+/* Wires: thin is a request and its reply, thick a WebSocket that stays open, dashed files fetched once. */
+.fig .w { stroke: currentColor; stroke-width: 1; fill: none; }
+.fig .ws { stroke-width: 2.75; }
+.fig .fl { stroke-dasharray: 5 4; }
+.fig .wp { stroke: var(--pg); }
+.fig .ww { stroke: var(--wk); }
+
+/* Key to the line styles */
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.75rem;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.9rem 0 0;
+  max-width: 50rem;
+}
+.key span { display: inline-flex; align-items: center; gap: 0.5rem; }
+.key svg { width: 34px; height: 8px; color: var(--fg); }
+
+/* Tables */
+.tablewrap { overflow-x: auto; margin: 1.25rem 0 1.5rem; }
+.page .tablewrap.wide { max-width: 64rem; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem 1.1rem 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+thead th { font-weight: 600; border-bottom: 1px solid var(--fg); }
+tbody th { font-weight: 600; white-space: nowrap; }
+tbody tr:last-child :is(th, td) { border-bottom: 0; }
+tbody tr.past :is(th, td) { color: var(--muted); }
+td code, th code { font-size: 0.92em; }
+td.n, th.n { font-weight: 600; color: var(--muted); width: 1.5rem; }
+td.how { white-space: nowrap; }
+dl.words {
+  max-width: 38rem;
+  margin: 0 0 1rem;
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+dl.words dt { font-weight: 600; margin-top: 0.8rem; }
+dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
+.end {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 3.5rem;
+  max-width: 38rem;
+}
+</style>
+</head>
+<body>
+
+<!-- Arrowheads shared by every figure. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="a" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--fg)"/></marker>
+    <marker id="ap" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--pg)"/></marker>
+    <marker id="aw" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--wk)"/></marker>
+    <marker id="asw" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0.5 L8 4 L0 7.5z" style="fill: var(--wk)"/></marker>
+  </defs>
+</svg>
+
+<main class="page">
+
+<h1>How Juicebot deploys</h1>
+<p class="lede">Juicebot is deployed to Cloudflare as a Page and a Worker. This document describes each one, how they are connected, and how they are deployed.</p>
+
+<ul class="toc">
+  <li><a href="#kinds">Pages, Workers, Durable Objects</a></li>
+  <li><a href="#stack">One stack</a></li>
+  <li><a href="#pair">How the Page and Worker connect</a></li>
+  <li><a href="#deploy">What a deploy does</a></li>
+  <li><a href="#stacks">The stacks</a></li>
+  <li><a href="#release">Releasing and rolling back</a></li>
+  <li><a href="#settings">Settings and secrets</a></li>
+  <li><a href="#wrong">When something goes wrong</a></li>
+  <li><a href="#words">Glossary</a></li>
+</ul>
+
+<h2 id="kinds">Pages, Workers, Durable Objects</h2>
+
+<p>Juicebot uses three Cloudflare features.</p>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 268" role="img" aria-label="Three small panels. Pages: one folder of files, handed unchanged to three browsers. Worker: three callers, each sending a request and getting a reply from the Worker's program. Durable Objects: a Worker reaching three objects, each named by a room id.">
+
+    <!-- Pages -->
+    <text class="t-h cp" x="20" y="22">Pages project</text>
+    <rect class="bx-p" x="20" y="44" width="124" height="146"/>
+    <text class="t-m" x="34" y="70">dist/</text>
+    <text class="t-m t-s" x="44" y="94">index.html</text>
+    <text class="t-m t-s" x="44" y="112">assets/app.js</text>
+    <text class="t-m t-s" x="44" y="130">assets/app.css</text>
+    <rect class="bx" x="222" y="44" width="80" height="34"/>
+    <text class="t-s" x="262" y="65" text-anchor="middle">browser</text>
+    <rect class="bx" x="222" y="100" width="80" height="34"/>
+    <text class="t-s" x="262" y="121" text-anchor="middle">browser</text>
+    <rect class="bx" x="222" y="156" width="80" height="34"/>
+    <text class="t-s" x="262" y="177" text-anchor="middle">browser</text>
+    <line class="w wp fl" x1="145" y1="88" x2="220" y2="61" marker-end="url(#ap)"/>
+    <line class="w wp fl" x1="145" y1="117" x2="220" y2="117" marker-end="url(#ap)"/>
+    <line class="w wp fl" x1="145" y1="146" x2="220" y2="173" marker-end="url(#ap)"/>
+    <text class="t-s" x="20" y="222">Serves the same files to every browser.</text>
+    <text class="t-s" x="20" y="238">Runs no code.</text>
+
+    <!-- Worker -->
+    <text class="t-h cw" x="358" y="22">Worker</text>
+    <rect class="bx" x="358" y="44" width="64" height="34"/>
+    <text class="t-s" x="390" y="65" text-anchor="middle">caller</text>
+    <rect class="bx" x="358" y="100" width="64" height="34"/>
+    <text class="t-s" x="390" y="121" text-anchor="middle">caller</text>
+    <rect class="bx" x="358" y="156" width="64" height="34"/>
+    <text class="t-s" x="390" y="177" text-anchor="middle">caller</text>
+    <rect class="bx-w" x="514" y="44" width="124" height="146"/>
+    <text class="t-m" x="528" y="70">src/index.js</text>
+    <text class="t-s" x="528" y="94">runs on each</text>
+    <text class="t-s" x="528" y="110">request</text>
+    <line class="w" x1="423" y1="61" x2="512" y2="61" marker-start="url(#a)" marker-end="url(#aw)"/>
+    <line class="w" x1="423" y1="117" x2="512" y2="117" marker-start="url(#a)" marker-end="url(#aw)"/>
+    <line class="w" x1="423" y1="173" x2="512" y2="173" marker-start="url(#a)" marker-end="url(#aw)"/>
+    <text class="t-s" x="358" y="222">Runs once per request.</text>
+    <text class="t-s" x="358" y="238">Keeps nothing between requests.</text>
+
+    <!-- Durable Objects -->
+    <text class="t-h cw" x="696" y="22">Durable Objects</text>
+    <rect class="bx-w" x="696" y="44" width="80" height="146"/>
+    <text class="t-s" x="736" y="121" text-anchor="middle" style="fill: var(--fg)">Worker</text>
+    <rect class="bx-w" x="866" y="44" width="112" height="34"/>
+    <text class="t-m" x="922" y="65" text-anchor="middle">7KQ2M9XA4T</text>
+    <rect class="bx-w" x="866" y="100" width="112" height="34"/>
+    <text class="t-m" x="922" y="121" text-anchor="middle">R3D0N8VB2C</text>
+    <rect class="bx-w" x="866" y="156" width="112" height="34"/>
+    <text class="t-m" x="922" y="177" text-anchor="middle">M4TQ6HZ1WE</text>
+    <line class="w" x1="777" y1="56" x2="864" y2="61" marker-end="url(#aw)"/>
+    <line class="w" x1="777" y1="80" x2="864" y2="61" marker-end="url(#aw)"/>
+    <line class="w" x1="777" y1="117" x2="864" y2="117" marker-end="url(#aw)"/>
+    <line class="w" x1="777" y1="173" x2="864" y2="173" marker-end="url(#aw)"/>
+    <text class="t-s" x="696" y="222">One object per room id.</text>
+    <text class="t-s" x="696" y="238">Keeps storage and WebSockets.</text>
+  </svg>
+  </div>
+  <figcaption><b>Figure 1.</b> Pages, a Worker, and Durable Objects. In every figure, blue is Pages and red is the Worker.</figcaption>
+</figure>
+
+<p><b class="pg">A Pages project holds files.</b> You build the site on your machine into <code>dist/</code> (HTML, JavaScript, CSS) and upload that folder. Pages serves the files at the project’s address. The code in them runs in the browser.</p>
+
+<p><b class="wk">A Worker holds code.</b> You upload a JavaScript program. Cloudflare runs it on each request to the Worker’s address. There is no server to manage. The Worker keeps nothing between requests.</p>
+
+<p><b class="wk">A Durable Object keeps state for a Worker.</b> The Worker creates or finds an object by giving Cloudflare an id string. Only one object exists per id, and each has its own storage. Juicebot uses room ids (such as <code>7KQ2M9XA4T</code>) and MCP session ids. All pages in Room <code>7KQ2M9XA4T</code> connect to the same object.</p>
+
+<h2 id="stack">One stack</h2>
+
+<p>A stack is one Page and one Worker configured to work together. Figure 2 shows production. The development stacks are the same except for their names.</p>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 610" role="img" aria-label="Map of the production stack. On the internet: a Cloudflare account holding the Pages project juicebot-web and the Worker juicebot-mcp with its Rooms and Sessions; Claude on Anthropic's servers; TinyURL. On the person's computer: a browser showing the page, and Claude desktop. Wires A to E join them.">
+
+    <text class="t-band" x="20" y="24">ON THE INTERNET</text>
+
+    <!-- Cloudflare account -->
+    <rect class="win" x="20" y="40" width="650" height="280"/>
+    <text class="t-s" x="34" y="60">Cloudflare account, zone 3dg.io</text>
+
+    <!-- Pages project -->
+    <rect class="bx-p" x="44" y="90" width="240" height="160"/>
+    <text class="t-h cp" x="164" y="116" text-anchor="middle">Pages project</text>
+    <text class="t-m t-s" x="164" y="134" text-anchor="middle">juicebot-web</text>
+    <text class="t-m t-s" x="164" y="150" text-anchor="middle">juicebot.3dg.io</text>
+    <text class="t-m t-s" x="74" y="180">index.html</text>
+    <text class="t-m t-s" x="74" y="196">assets/index-….js</text>
+    <text class="t-m t-s" x="74" y="212">assets/index-….css</text>
+    <text class="t-s" x="164" y="238" text-anchor="middle">files only; nothing runs here</text>
+
+    <!-- Worker -->
+    <rect class="bx-w" x="360" y="74" width="290" height="236"/>
+    <text class="t-h cw" x="505" y="98" text-anchor="middle">Worker</text>
+    <text class="t-m t-s" x="505" y="116" text-anchor="middle">juicebot-mcp   juicebot-mcp.3dg.io</text>
+    <text class="t-m" x="376" y="142" style="font-size:10.5px">/mcp</text>
+    <text class="t-s" x="414" y="142">tool calls from Claude</text>
+    <text class="t-m" x="376" y="160" style="font-size:10.5px">/ws</text>
+    <text class="t-s" x="414" y="160">WebSockets from pages</text>
+    <text class="t-h" x="376" y="192" style="font-size:11px">Durable Objects</text>
+    <rect class="bx" x="376" y="202" width="128" height="92"/>
+    <text class="t-h" x="440" y="222" text-anchor="middle" style="font-size:11.5px">Rooms</text>
+    <text class="t-s" x="440" y="240" text-anchor="middle">one per room id:</text>
+    <text class="t-s" x="440" y="255" text-anchor="middle">the page sockets and</text>
+    <text class="t-s" x="440" y="270" text-anchor="middle">the last saved session</text>
+    <rect class="bx" x="512" y="202" width="124" height="92"/>
+    <text class="t-h" x="574" y="222" text-anchor="middle" style="font-size:11.5px">Sessions</text>
+    <text class="t-s" x="574" y="240" text-anchor="middle">one per MCP session:</text>
+    <text class="t-s" x="574" y="255" text-anchor="middle">which Room it is</text>
+    <text class="t-s" x="574" y="270" text-anchor="middle">bound to</text>
+
+    <!-- Outside Cloudflare -->
+    <rect class="bx" x="720" y="74" width="255" height="110"/>
+    <text class="t-h" x="847" y="106" text-anchor="middle">Claude</text>
+    <text class="t-s" x="847" y="126" text-anchor="middle">on Anthropic’s servers;</text>
+    <text class="t-s" x="847" y="142" text-anchor="middle">runs the model, calls tools</text>
+    <rect class="bx-q" x="720" y="232" width="160" height="58"/>
+    <text class="t-s" x="800" y="256" text-anchor="middle" style="fill: var(--fg)">TinyURL</text>
+    <text class="t-s" x="800" y="274" text-anchor="middle">shortens share links</text>
+
+    <line class="sep" x1="0" y1="352" x2="1000" y2="352"/>
+    <text class="t-band" x="20" y="374">ON THE PERSON’S COMPUTER</text>
+
+    <!-- Browser -->
+    <rect class="win" x="20" y="386" width="600" height="210"/>
+    <line class="win" x1="20" y1="408" x2="620" y2="408"/>
+    <text class="t-s" x="32" y="401">Browser</text>
+    <text class="t-m t-s" x="196" y="401">juicebot.3dg.io/?room=7KQ2M9XA4T</text>
+    <rect class="bx-g" x="44" y="422" width="552" height="160"/>
+    <text class="t-h" x="60" y="446">The page</text>
+    <text class="t-s" x="60" y="464">juicebox-web, as built and uploaded</text>
+    <rect class="bx" x="60" y="482" width="250" height="84"/>
+    <text class="t-h" x="185" y="516" text-anchor="middle" style="font-size:11.5px">juicebox.js</text>
+    <text class="t-s" x="185" y="534" text-anchor="middle">the contact-map viewer</text>
+    <rect class="bx" x="330" y="482" width="250" height="84"/>
+    <text class="t-h" x="455" y="516" text-anchor="middle" style="font-size:11.5px">juicebox-remote</text>
+    <text class="t-s" x="455" y="534" text-anchor="middle">joins the Room, runs commands</text>
+
+    <!-- Claude desktop -->
+    <rect class="win" x="660" y="386" width="315" height="210"/>
+    <line class="win" x1="660" y1="408" x2="975" y2="408"/>
+    <text class="t-s" x="672" y="401">Claude desktop</text>
+    <text x="817" y="494" text-anchor="middle">Conversation</text>
+    <text class="t-s" x="817" y="512" text-anchor="middle">the person and the model</text>
+
+    <!-- A: page files -->
+    <line class="w wp fl" x1="164" y1="251" x2="164" y2="420" marker-end="url(#ap)"/>
+    <text class="tag k" x="172" y="284">A</text>
+    <text class="t-s k" x="186" y="284">page files,</text>
+    <text class="t-s k" x="186" y="298">fetched once</text>
+
+    <!-- B: WebSocket -->
+    <line class="w ws ww" x1="440" y1="296" x2="440" y2="480" marker-start="url(#asw)" marker-end="url(#asw)"/>
+    <text class="tag k" x="450" y="340">B</text>
+    <text class="t-s k" x="464" y="340">WebSocket <tspan class="t-m">/ws?room=</tspan></text>
+
+    <!-- C: MCP -->
+    <line class="w" x1="719" y1="132" x2="652" y2="132" marker-start="url(#a)" marker-end="url(#aw)"/>
+    <text class="k" x="685" y="124" text-anchor="middle" style="font-size:11px"><tspan class="tag">C</tspan> <tspan class="t-m">/mcp</tspan></text>
+
+    <!-- D: conversation -->
+    <line class="w" x1="905" y1="185" x2="905" y2="384" marker-start="url(#a)" marker-end="url(#a)"/>
+    <text class="tag k" x="913" y="300">D</text>
+
+    <!-- E: TinyURL -->
+    <line class="w" x1="652" y1="261" x2="718" y2="261" marker-end="url(#a)"/>
+    <text class="tag k" x="685" y="253" text-anchor="middle">E</text>
+  </svg>
+  </div>
+  <div class="key" aria-hidden="true">
+    <span><svg viewBox="0 0 34 8"><line x1="0" y1="4" x2="34" y2="4" stroke="currentColor" stroke-width="1"/></svg>a request and its reply, over HTTPS</span>
+    <span><svg viewBox="0 0 34 8"><line x1="0" y1="4" x2="34" y2="4" stroke="currentColor" stroke-width="2.75"/></svg>a WebSocket that stays open</span>
+    <span><svg viewBox="0 0 34 8"><line x1="0" y1="4" x2="34" y2="4" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4"/></svg>files, fetched once when the page opens</span>
+  </div>
+  <figcaption><b>Figure 2.</b> The production stack. The page loads maps and tracks directly from public data hosts (not drawn).</figcaption>
+</figure>
+
+<aside class="note">Tool calls come from Anthropic’s servers, so the Worker needs a public <code>https://</code> address, including for testing.</aside>
+
+<ol>
+  <li>The person opens a join link. The browser loads the page’s files from Pages (<b>A</b>).</li>
+  <li>The page opens a WebSocket to the Worker (<b>B</b>). The Worker passes it to the Room’s Durable Object.</li>
+  <li>Claude calls a tool on the Worker (<b>C</b>).</li>
+  <li>The Worker sends a command over the WebSocket. The page runs it and replies.</li>
+</ol>
+
+<p>After the files load, Pages is not involved.</p>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th class="n"></th><th>Between</th><th>How</th><th>What crosses it</th><th>When</th></tr></thead>
+  <tbody>
+    <tr><td class="n pg">A</td><td>Pages and the browser</td><td class="how">GET</td><td>The page’s HTML, JavaScript and CSS, exactly as uploaded.</td><td>Once, when the page opens.</td></tr>
+    <tr><td class="n wk">B</td><td>The page and the Worker’s Room</td><td class="how">WebSocket <code>/ws?room=</code></td><td>Down: commands such as “load this map”. Up: acks, the saved session, and changes the person makes by hand, which the Room passes to every other page in it.</td><td>Opened when the page loads. Stays open, and reopens by itself if it drops.</td></tr>
+    <tr><td class="n">C</td><td>Claude and the Worker</td><td class="how">POST <code>/mcp</code></td><td>MCP tool calls, each answered at once.</td><td>Each time the model uses a tool.</td></tr>
+    <tr><td class="n">D</td><td>Claude desktop and Anthropic</td><td class="how">Claude’s own</td><td>The conversation. Juicebot never sees it.</td><td>Always.</td></tr>
+    <tr><td class="n">E</td><td>The Worker and TinyURL</td><td class="how">POST</td><td>A long share link, returned short on <code>t.3dg.io</code>.</td><td>When the model makes a shareable link.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="pair">How the Page and Worker connect</h2>
+
+<p>Three settings connect a Page to its Worker.</p>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 284" role="img" aria-label="The Page, built with VITE_WS_URL, connects to the Worker's address. The Worker checks the page's origin against ALLOWED_ORIGINS. The Worker's BROWSER_URL sends people from join links to the Page.">
+    <rect class="bx-p" x="40" y="30" width="270" height="228"/>
+    <text class="t-h cp" x="175" y="58" text-anchor="middle">Page</text>
+    <text class="t-m t-s" x="175" y="76" text-anchor="middle">juicebot.3dg.io</text>
+    <rect class="bx" x="60" y="104" width="230" height="54"/>
+    <text class="t-m" x="175" y="127" text-anchor="middle">VITE_WS_URL</text>
+    <text class="t-s" x="175" y="145" text-anchor="middle">baked into its JavaScript</text>
+
+    <rect class="bx-w" x="690" y="30" width="270" height="228"/>
+    <text class="t-h cw" x="825" y="58" text-anchor="middle">Worker</text>
+    <text class="t-m t-s" x="825" y="76" text-anchor="middle">juicebot-mcp.3dg.io</text>
+    <rect class="bx" x="710" y="104" width="230" height="54"/>
+    <text class="t-m" x="825" y="127" text-anchor="middle">ALLOWED_ORIGINS</text>
+    <text class="t-s" x="825" y="145" text-anchor="middle">pages that may open /ws</text>
+    <rect class="bx" x="710" y="180" width="230" height="54"/>
+    <text class="t-m" x="825" y="203" text-anchor="middle">BROWSER_URL</text>
+    <text class="t-s" x="825" y="221" text-anchor="middle">where join links point</text>
+
+    <line class="w ws ww" x1="291" y1="131" x2="706" y2="131" marker-end="url(#asw)"/>
+    <text class="t-m k" x="500" y="118" text-anchor="middle">wss://juicebot-mcp.3dg.io/ws</text>
+    <text class="t-s k" x="500" y="154" text-anchor="middle"><tspan class="t-n">1</tspan>  the page connects;  <tspan class="t-n">2</tspan>  the Worker checks its origin</text>
+
+    <line class="w wp" x1="709" y1="207" x2="312" y2="207" marker-end="url(#ap)"/>
+    <text class="t-m k" x="500" y="198" text-anchor="middle">https://juicebot.3dg.io/?room=7KQ2M9XA4T</text>
+    <text class="t-s k" x="500" y="226" text-anchor="middle"><tspan class="t-n">3</tspan>  join links open the page</text>
+  </svg>
+  </div>
+  <figcaption><b>Figure 3.</b> The three settings. <code>VITE_WS_URL</code> is in the Page; the other two are in <code>wrangler.toml</code>.</figcaption>
+</figure>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th class="n"></th><th>Setting</th><th>Lives in</th><th>Says</th><th>If it is wrong</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td><code>VITE_WS_URL</code></td><td>The page’s JavaScript, fixed when it is built</td><td>Which Worker this page connects to.</td><td>The page does not connect, or connects to another stack’s Worker.</td></tr>
+    <tr><td class="n">2</td><td><code>ALLOWED_ORIGINS</code></td><td><code>wrangler.toml</code>, the stack’s <code>vars</code></td><td>Which page addresses may open a WebSocket. It must match exactly, scheme and all.</td><td>The Worker refuses the page (403).</td></tr>
+    <tr><td class="n">3</td><td><code>BROWSER_URL</code></td><td><code>wrangler.toml</code>, the stack’s <code>vars</code></td><td>Which page the join links and snapshot links open. The trailing slash matters.</td><td>Claude’s links open the wrong page.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><code>VITE_WS_URL</code> is written into the page’s JavaScript at build time. To change it, rebuild and redeploy the page.</p>
+
+<h2 id="deploy">What a deploy does</h2>
+
+<p>A deploy builds the Worker and the Page on your machine from a git tag or branch, and uploads them. Uncommitted changes are not deployed.</p>
+
+<figure>
+  <div class="figwrap">
+  <svg class="fig" viewBox="0 0 1000 318" role="img" aria-label="Two lanes, left to right. The Worker: juicebox-mcp at a tag, a clean worktree, npm install, wrangler deploy, then the Worker live on Cloudflare. The Page: juicebox-web at the same tag, a clean worktree, npm ci and vite build into dist, wrangler pages deploy, then a new Pages deployment.">
+    <text class="t-band" x="20" y="22">ON YOUR COMPUTER</text>
+    <line class="sep" x1="760" y1="8" x2="760" y2="310"/>
+    <text class="t-band" x="778" y="22">ON CLOUDFLARE</text>
+
+    <text class="t-n" x="90" y="48" text-anchor="middle">git</text>
+    <text class="t-n" x="270" y="48" text-anchor="middle">checkout</text>
+    <text class="t-n" x="450" y="48" text-anchor="middle">build</text>
+    <text class="t-n" x="640" y="48" text-anchor="middle">upload</text>
+
+    <!-- Worker lane -->
+    <rect class="bx" x="20" y="72" width="140" height="56"/>
+    <text class="t-m" x="90" y="96" text-anchor="middle">juicebox-mcp</text>
+    <text class="t-s" x="90" y="113" text-anchor="middle">at a tag or branch</text>
+    <rect class="bx" x="200" y="72" width="140" height="56"/>
+    <text class="t-h" x="270" y="96" text-anchor="middle" style="font-size:11.5px">worktree</text>
+    <text class="t-s" x="270" y="113" text-anchor="middle">a clean, throwaway copy</text>
+    <rect class="bx" x="380" y="72" width="140" height="56"/>
+    <text class="t-m" x="450" y="96" text-anchor="middle">npm install</text>
+    <text class="t-s" x="450" y="113" text-anchor="middle">the Worker’s packages</text>
+    <rect class="bx" x="560" y="72" width="160" height="56"/>
+    <text class="t-m" x="640" y="96" text-anchor="middle">wrangler deploy</text>
+    <text class="t-m t-s" x="640" y="113" text-anchor="middle">--env prod</text>
+    <rect class="bx-w" x="790" y="64" width="185" height="72"/>
+    <text class="t-h cw" x="882" y="88" text-anchor="middle">Worker</text>
+    <text class="t-m t-s" x="882" y="106" text-anchor="middle">juicebot-mcp</text>
+    <text class="t-s" x="882" y="122" text-anchor="middle">new version live in seconds</text>
+    <line class="w" x1="161" y1="100" x2="198" y2="100" marker-end="url(#a)"/>
+    <line class="w" x1="341" y1="100" x2="378" y2="100" marker-end="url(#a)"/>
+    <line class="w" x1="521" y1="100" x2="558" y2="100" marker-end="url(#a)"/>
+    <line class="w ww" x1="721" y1="100" x2="788" y2="100" marker-end="url(#aw)"/>
+
+    <!-- Page lane -->
+    <rect class="bx" x="20" y="212" width="140" height="56"/>
+    <text class="t-m" x="90" y="236" text-anchor="middle">juicebox-web</text>
+    <text class="t-s" x="90" y="253" text-anchor="middle">at a tag or branch</text>
+    <rect class="bx" x="200" y="212" width="140" height="56"/>
+    <text class="t-h" x="270" y="236" text-anchor="middle" style="font-size:11.5px">worktree</text>
+    <text class="t-s" x="270" y="253" text-anchor="middle">a clean, throwaway copy</text>
+    <rect class="bx" x="380" y="212" width="140" height="56"/>
+    <text class="t-m" x="450" y="236" text-anchor="middle">vite build</text>
+    <text class="t-s" x="450" y="253" text-anchor="middle">VITE_WS_URL → dist/</text>
+    <rect class="bx" x="560" y="212" width="160" height="56"/>
+    <text class="t-m" x="640" y="236" text-anchor="middle" style="font-size:10.5px">wrangler pages deploy</text>
+    <text class="t-m t-s" x="640" y="253" text-anchor="middle">dist</text>
+    <rect class="bx-p" x="790" y="204" width="185" height="72"/>
+    <text class="t-h cp" x="882" y="228" text-anchor="middle">Pages project</text>
+    <text class="t-m t-s" x="882" y="246" text-anchor="middle">juicebot-web</text>
+    <text class="t-s" x="882" y="262" text-anchor="middle">new deployment, same address</text>
+    <line class="w" x1="161" y1="240" x2="198" y2="240" marker-end="url(#a)"/>
+    <line class="w" x1="341" y1="240" x2="378" y2="240" marker-end="url(#a)"/>
+    <line class="w" x1="521" y1="240" x2="558" y2="240" marker-end="url(#a)"/>
+    <line class="w wp" x1="721" y1="240" x2="788" y2="240" marker-end="url(#ap)"/>
+
+    <text class="t-s" x="450" y="172" text-anchor="middle">VITE_WS_URL = the Worker’s address</text>
+    <line class="w fl" x1="450" y1="178" x2="450" y2="210" marker-end="url(#a)" style="stroke: var(--muted)"/>
+  </svg>
+  </div>
+  <figcaption><b>Figure 4.</b> <code>scripts/deploy-prod.sh</code>. The Worker is deployed first, then the Page. The test scripts work the same way. <code>wrangler</code> is Cloudflare’s command-line tool.</figcaption>
+</figure>
+
+<p><b class="wk">Worker.</b> <code>wrangler deploy --env prod</code> bundles <code>src/index.js</code> with the <code>prod</code> settings from <code>wrangler.toml</code> and uploads it. The new version is live within seconds. Room storage is kept; open WebSockets drop and the pages reconnect.</p>
+
+<aside class="note">Pages can also build from GitHub. Juicebot builds locally so the script can set <code>VITE_WS_URL</code>.</aside>
+
+<p><b class="pg">Page.</b> <code>vite build</code> writes <code>dist/</code> with <code>VITE_WS_URL</code>. The script checks the address is in the built files, then <code>wrangler pages deploy</code> uploads <code>dist/</code>. The project’s address serves the new upload immediately. Earlier uploads remain at <code>&lt;hash&gt;.juicebot-web.pages.dev</code>.</p>
+
+<h2 id="stacks">The stacks</h2>
+
+<p>Each <code>[env.<i>name</i>]</code> section of <code>wrangler.toml</code> deploys the same Worker code with its own name, address, settings, secrets and Durable Objects. Stacks share no data.</p>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th>Stack</th><th class="pg">Page</th><th class="wk">Worker</th><th>Deployed by</th></tr></thead>
+  <tbody>
+    <tr><th>Production</th><td><code>juicebot-web</code><br><code>juicebot.3dg.io</code></td><td><code>--env prod</code>, <code>juicebot-mcp</code><br><code>juicebot-mcp.3dg.io</code></td><td><code>scripts/deploy-prod.sh prod-YYYY-MM-DD</code>, from a tag only. This is the stack the Juicebot plugin uses.</td></tr>
+    <tr><th>Web dev</th><td><code>juicebot-web-dev</code><br><code>juicebot-dev.3dg.io</code></td><td><code>--env dev</code>, <code>juicebot-mcp-dev</code><br><code>juicebot-mcp-dev.3dg.io</code></td><td><code>scripts/deploy-test.sh web &lt;juicebox-web&gt; [ref]</code></td></tr>
+    <tr><th>View dev</th><td><code>juicebot-view-dev</code><br><code>juicebot-view-dev.pages.dev</code></td><td><code>--env view-dev</code>, <code>juicebot-view-mcp-dev</code><br><code>juicebot-view-mcp-dev.3dg.io</code></td><td><code>scripts/deploy-test.sh view &lt;juicebox-view&gt; [ref]</code>. The page is juicebox-view, not juicebox-web.</td></tr>
+    <tr class="past"><th>Demo</th><td><code>juicebox-web-dev</code><br><code>juicebox-v2.3dg.io</code></td><td><code>--env v2</code>, <code>juicebox-mcp-v2</code><br>its <code>workers.dev</code> address</td><td>Frozen at tag <code>demo-2026-10</code>. Not redeployed.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<aside class="note">Test stacks are shared: a deploy replaces the previous one. To undo, redeploy the earlier branch or tag.</aside>
+
+<p>Development names end in <code>-dev</code>; production uses the same names without it. The top level of <code>wrangler.toml</code> (outside any <code>[env]</code>) is the old prototype Worker at <code>jbmcp.3dg.io</code>.</p>
+
+<p><code>3dg.io</code> is a zone on the same Cloudflare account, so Workers and Pages projects can use addresses in it. Every Pages project also has a <code>&lt;project&gt;.pages.dev</code> address; the view stack uses only that.</p>
+
+<h2 id="release">Releasing and rolling back</h2>
+
+<p>Production is deployed only from a tag. The same tag, such as <code>prod-2026-10-11</code>, goes on juicebox-mcp <code>main</code> and juicebox-web <code>master</code>. A second release that day is <code>prod-2026-10-11.1</code>.</p>
+
+<ol>
+  <li>Tag both repos with the same <code>prod-</code> name, and push both tags.</li>
+  <li>Run <code>scripts/deploy-prod.sh prod-2026-10-11</code>. It refuses a tag that is missing from either repo’s origin.</li>
+  <li>To roll back, run it with the previous tag.</li>
+</ol>
+
+<p>One tag for both repos keeps the Page and Worker versions matched.</p>
+
+<h2 id="settings">Settings and secrets</h2>
+
+<p>Settings live in three places.</p>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th>Place</th><th>Holds</th><th>Who can read it</th><th>A change takes effect</th></tr></thead>
+  <tbody>
+    <tr><th><code>wrangler.toml</code> <code>vars</code></th><td><code>BROWSER_URL</code>, <code>ALLOWED_ORIGINS</code>, <code>TINYURL_DOMAIN</code></td><td>Anyone: the file is in git</td><td>On the next <code>wrangler deploy</code> of that stack</td></tr>
+    <tr><th>Worker secrets</th><td><code>TINYURL_API_KEY</code>, <code>SESSION_HMAC_SECRET</code></td><td>Only the Worker</td><td>At once: <code>wrangler secret put <i>NAME</i> --env <i>stack</i></code> deploys a new version</td></tr>
+    <tr><th>The page build</th><td><code>VITE_WS_URL</code></td><td>Anyone: it is in the page’s JavaScript</td><td>On the next build and upload of the page</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Secrets are per stack. For <code>wrangler dev</code>, secrets come from <code>packages/server/.dev.vars</code>, which is not in git.</p>
+
+<aside class="note">Variables set in the Pages dashboard are ignored by direct uploads.</aside>
+
+<p>Stored state: Pages keeps the uploaded files. Each Room keeps the last saved session, deleted 24 hours after the last message. Each Session keeps the Room it is bound to. The Worker keeps nothing.</p>
+
+<h2 id="wrong">When something goes wrong</h2>
+
+<div class="tablewrap wide">
+<table>
+  <thead><tr><th>What you see</th><th>Likely cause</th><th>What to do</th></tr></thead>
+  <tbody>
+    <tr><td>The page loads but never joins a Room</td><td>The page was built for another Worker, or its address is missing from <code>ALLOWED_ORIGINS</code></td><td>Redeploy the page with the stack’s script; add the address to the stack’s <code>vars</code> and redeploy the Worker.</td></tr>
+    <tr><td>Claude’s links open the wrong page</td><td><code>BROWSER_URL</code></td><td>Correct it in the stack’s <code>vars</code> and redeploy the Worker.</td></tr>
+    <tr><td>Claude’s share links come back long</td><td><code>TINYURL_API_KEY</code> is not set on this stack</td><td><code>wrangler secret put TINYURL_API_KEY --env <i>stack</i></code></td></tr>
+    <tr><td>Every tool call from ChatGPT fails</td><td><code>SESSION_HMAC_SECRET</code> is not set on this stack</td><td><code>wrangler secret put SESSION_HMAC_SECRET --env <i>stack</i></code></td></tr>
+    <tr><td>The page loses its connection for a moment</td><td>A Worker deploy dropped its WebSocket</td><td>Nothing. It reconnects within 5 s.</td></tr>
+    <tr><td>The test stack shows someone else’s work</td><td>Someone deployed after you</td><td>Agree who is testing, then deploy again.</td></tr>
+    <tr><td>A release is broken</td><td></td><td>Run <code>scripts/deploy-prod.sh</code> with the previous tag.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="words">Glossary</h2>
+
+<dl class="words">
+  <dt>Account</dt>
+  <dd>Owns all the resources here. Its id is in <code>wrangler.toml</code>.</dd>
+  <dt>Zone</dt>
+  <dd>A domain whose DNS Cloudflare runs: <code>3dg.io</code>.</dd>
+  <dt>Pages project</dt>
+  <dd>A static site. Each upload is a deployment; the newest is served at the project’s address.</dd>
+  <dt>Worker</dt>
+  <dd>A program Cloudflare runs on each request to its address.</dd>
+  <dt>Environment</dt>
+  <dd>A section <code>[env.<i>name</i>]</code> of <code>wrangler.toml</code> that deploys the same code as a separate Worker. Chosen with <code>--env</code>.</dd>
+  <dt>Durable Object</dt>
+  <dd>An object with storage, owned by a Worker and found by an id string; one per id. Juicebot’s are <code>WebSocketRoom</code> and <code>McpSession</code>.</dd>
+  <dt>Binding</dt>
+  <dd>How Worker code reaches another Cloudflare resource. <code>WEBSOCKET_ROOM</code> and <code>MCP_SESSION</code> bind the two Durable Objects.</dd>
+  <dt>Custom domain</dt>
+  <dd>An address in a zone, such as <code>juicebot-mcp.3dg.io</code>, used instead of or beside the default <code>workers.dev</code> or <code>pages.dev</code> address.</dd>
+  <dt>wrangler</dt>
+  <dd>Cloudflare’s command-line tool. Run <code>npx wrangler login</code> once; the scripts use it after that.</dd>
+</dl>
+
+<p>Test deploy steps: <code>docs/test-deployment.md</code>. Runtime behaviour: <code>docs/how-juicebox-mcp-works.html</code>. Design: <code>docs/design/ARCHITECTURE_V2.md</code>.</p>
+
+<p class="end">Written 20 October 2026 from <code>packages/server/wrangler.toml</code> and the scripts in <code>scripts/</code> at commit e5a44dc.</p>
+
+</main>
+</body>
+</html>
