@@ -946,7 +946,7 @@ describe('sync events: detach', () => {
     const hic = fakeHic();
     const { remote } = await joined(hic);
     expect(hic.current.coordinator.count()).toBe(9);
-    expect(hic.bus.count()).toBe(9); // BrowserAdd, BrowserDelete, BrowserSelect + three track-pair events + three 2D-track events
+    expect(hic.bus.count()).toBe(10); // BrowserAdd, BrowserDelete, BrowserSelect, NavbarVisibilityChange + three track-pair events + three 2D-track events
     remote.detach();
     expect(hic.current.coordinator.count()).toBe(0);
     expect(hic.bus.count()).toBe(0);

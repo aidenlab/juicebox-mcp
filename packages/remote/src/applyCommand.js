@@ -138,6 +138,18 @@ const appliers = {
   [CommandType.SET_TRACK_LOG_SCALE]: ({ track, enabled, panel }, { hic }) =>
     forTrackPanels(hic, panel, track, (browser) => setTrackLogScale(browser, track, enabled)),
 
+  // Page-wide: the Juicebox Panel Controls are one switch on juicebox.js's registry (ADR-0009),
+  // which panels opened later follow too, so it takes no panel and needs no map.
+  [CommandType.SET_PANEL_CONTROLS_VISIBLE]: async ({ show }, { hic }) => {
+    if (typeof show !== 'boolean') throw new Error('show must be true or false');
+    if (typeof hic.setNavbarVisible !== 'function') {
+      throw new Error('This page cannot hide or show the Juicebox Panel Controls (it needs juicebox.js 4.12.0 or later)');
+    }
+    hic.setNavbarVisible(show);
+    const count = hic.getAllBrowsers().length;
+    return `Juicebox Panel Controls ${show ? 'shown' : 'hidden'} on ${count} panel${count === 1 ? '' : 's'}`;
+  },
+
   [CommandType.GET_TRACK_LIST]: async (command, { hic }) => {
     const { trackPairs, tracks2D } = resolvePanel(hic, command.panel, 'list_tracks');
     // A pending track pair carries its config itself; a loaded one carries it on the track.
@@ -161,9 +173,10 @@ const appliers = {
     return [...pairs, ...twoD];
   },
 
+  // The panels, and whether the page shows the Juicebox Panel Controls (always, before juicebox.js 4.12.0).
   [CommandType.GET_PANEL_LIST]: async (command, { hic }) => {
     const current = hic.getCurrentBrowser();
-    return hic.getAllBrowsers().map((browser, i) => {
+    const panels = hic.getAllBrowsers().map((browser, i) => {
       const { dataset, controlDataset, trackPairs, tracks2D } = browser;
       return {
         panel: i + 1,
@@ -175,6 +188,7 @@ const appliers = {
         locus: dataset ? locusString(browser) : null,
       };
     });
+    return { panels, panelControlsVisible: hic.isNavbarVisible?.() ?? true };
   },
 
   // One entry per panel, `{}` for one with no map, so a late joiner restores the empty panels too

@@ -41,14 +41,16 @@ export const CommandType = Object.freeze({
   SET_TRACK_DATA_RANGE: 'setTrackDataRange',
   SET_TRACK_AUTOSCALE: 'setTrackAutoscale',
   SET_TRACK_LOG_SCALE: 'setTrackLogScale',
+  SET_PANEL_CONTROLS_VISIBLE: 'setPanelControlsVisible',
   GET_SESSION: 'getSession',
   GET_COMPRESSED_SESSION: 'getCompressedSession',
 });
 
 /**
- * `syncType` values carried by a `syncEvent` (§5.3). Every sync event also carries `panel`,
- * the 1-based left-to-right position of the panel it happened in; one without it (from a
- * remote before ADR-0008) is for the receiver's current panel.
+ * `syncType` values carried by a `syncEvent` (§5.3). Every sync event but a page-wide one
+ * also carries `panel`, the 1-based left-to-right position of the panel it happened in; one
+ * without it (from a remote before ADR-0008) is for the receiver's current panel. A page-wide
+ * event never carries `panel`: its type says it is for the receiver's whole page (ADR-0009).
  */
 export const SyncEventType = Object.freeze({
   LOCUS_CHANGE: 'locusChange',
@@ -69,6 +71,8 @@ export const SyncEventType = Object.freeze({
   // an empty panel only at one past its last and never closes its last one (ADR-0008).
   PANEL_OPEN: 'panelOpen',
   PANEL_CLOSE: 'panelClose',
+  // Page-wide: the Juicebox Panel Controls were hidden or shown on the sender, `{visible}`.
+  PANEL_CONTROLS_CHANGE: 'panelControlsChange',
 });
 
 /** `code` values of an `error` message. */

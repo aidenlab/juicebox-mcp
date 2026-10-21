@@ -335,6 +335,16 @@ const COMMAND_TOOLS = [
     text: ({ track, enabled }) => `${enabled ? 'Enabling' : 'Disabling'} log scale for track "${track}"`
   },
   {
+    name: 'show_panel_controls',
+    title: 'Show Panel Controls',
+    description: 'Hide or show the Juicebox Panel Controls (the bar above each map with its map name, locus box and menus) on every panel of the page, and on panels opened later: the same switch as the controls button in the page header. It always acts on the whole page, so it takes no panel. Repeating the current state changes nothing; list_panels says which it is.',
+    inputSchema: {
+      show: z.boolean().describe('true shows the Juicebox Panel Controls, false hides them')
+    },
+    type: CommandType.SET_PANEL_CONTROLS_VISIBLE,
+    text: ({ show }) => `${show ? 'Showing' : 'Hiding'} the Juicebox Panel Controls`
+  },
+  {
     name: 'goto_locus',
     title: 'Navigate to Locus',
     description: 'Navigate to a specific genomic locus in the currently loaded map. Supports natural language, gene names, standard format, and structured objects. Examples: "chr1:1000-2000", "BRCA1", "chromosome 1 from 1000 to 2000", or {chr: "chr1", start: 1000, end: 2000}. When a single chromosome is specified, it applies to both axes of the Hi-C contact map.',
@@ -481,13 +491,16 @@ export function registerTools(mcpServer, deps) {
     'list_panels',
     {
       title: 'List Panels',
-      description: 'List the panels (contact-map viewers) open in the page, left to right: position, whether it is the current one, map name, genome, control map, track count and locus. Tools that take `panel` address a panel by this position, by its map name, or "all".',
+      description: 'List the panels (contact-map viewers) open in the page, left to right: position, whether it is the current one, map name, genome, control map, track count and locus, then whether the Juicebox Panel Controls are shown. Tools that take `panel` address a panel by this position, by its map name, or "all".',
       inputSchema: {}
     },
     async () => {
-      const { result: panels, error } = await runRequest('getPanelList');
+      const { result, error } = await runRequest('getPanelList');
       if (error) return error;
-      return { content: [{ type: 'text', text: JSON.stringify(panels, null, 2) }] };
+      // A remote before panel controls answers with the bare list.
+      if (Array.isArray(result)) return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      const { panels, panelControlsVisible } = result;
+      return { content: [{ type: 'text', text: `${JSON.stringify(panels, null, 2)}\nJuicebox Panel Controls: ${panelControlsVisible ? 'shown' : 'hidden'}` }] };
     }
   );
 
@@ -727,6 +740,10 @@ Each map can open in its own panel, numbered 1, 2, ... from the left. With more 
 
 **Close a panel:**
 - "Close the heart panel" (the panels to its right move one number left; the last panel stays open)
+
+**Hide the controls above the maps (every panel at once):**
+- "Hide the Juicebox controls"
+- "Show the controls again"
 
 ### Sessions
 

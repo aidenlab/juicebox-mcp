@@ -48,7 +48,7 @@ describe('protocol: catalogue', () => {
         'loadMap', 'loadControlMap', 'closePanel', 'loadSession', 'gotoLocus', 'zoomIn', 'zoomOut',
         'setForegroundColor', 'setBackgroundColor', 'setColorScale', 'setNormalization',
         'loadTrack', 'getTrackList', 'getPanelList', 'removeTrack', 'setTrackColor', 'setTrackName',
-        'setTrackDataRange', 'setTrackAutoscale', 'setTrackLogScale',
+        'setTrackDataRange', 'setTrackAutoscale', 'setTrackLogScale', 'setPanelControlsVisible',
         'getSession', 'getCompressedSession',
       ].sort(),
     );
@@ -60,7 +60,7 @@ describe('protocol: catalogue', () => {
         'locusChange', 'colorScaleChange', 'backgroundColorChange', 'normalizationChange',
         'displayModeChange', 'mapLoad', 'controlMapLoad', 'trackLoad', 'trackRemove',
         'trackColorChange', 'trackNameChange', 'trackDataRangeChange',
-        'trackAutoscaleChange', 'trackLogScaleChange', 'panelOpen', 'panelClose',
+        'trackAutoscaleChange', 'trackLogScaleChange', 'panelOpen', 'panelClose', 'panelControlsChange',
       ].sort(),
     );
   });

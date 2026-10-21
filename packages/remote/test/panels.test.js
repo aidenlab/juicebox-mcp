@@ -318,11 +318,12 @@ describe('panels: getPanelList', () => {
     const { ok, result } = await send({ type: 'getPanelList' });
 
     expect(ok).toBe(true);
-    expect(result).toEqual([
+    expect(result.panels).toEqual([
       { panel: 1, current: false, map: 'heart', genome: 'mm10', controlMap: 'heart control', tracks: 2,
         locus: 'chr8:127,000,001-129,000,000 chr8:127,000,001-129,000,000' },
       { panel: 2, current: false, map: null, genome: null, controlMap: null, tracks: 0, locus: null },
       { panel: 3, current: true, map: 'colon', genome: 'GRCh38', controlMap: null, tracks: 0, locus: 'All' },
     ]);
+    expect(result.panelControlsVisible).toBe(true);
   });
 });

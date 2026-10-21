@@ -223,6 +223,10 @@ describe('command tools: what the page receives (ticket 36)', () => {
     { tool: 'set_track_log_scale',
       args: { track: 'genes', enabled: false }, sent: { type: 'setTrackLogScale', track: 'genes', enabled: false },
       text: 'Disabling log scale for track "genes"' },
+    { tool: 'show_panel_controls',
+      args: { show: false }, sent: { type: 'setPanelControlsVisible', show: false }, text: 'Hiding the Juicebox Panel Controls' },
+    { tool: 'show_panel_controls', label: 'show',
+      args: { show: true }, sent: { type: 'setPanelControlsVisible', show: true }, text: 'Showing the Juicebox Panel Controls' },
     { tool: 'goto_locus',
       args: { locus: 'chr1:1000-2000' }, sent: { type: 'gotoLocus', locus: 'chr1:1000-2000' }, text: 'Navigating to locus: chr1:1000-2000' },
     { tool: 'goto_locus', label: 'structured locus',
@@ -397,6 +401,7 @@ describe('toolCall notice', () => {
     ['set_track_log_scale', { track: 'genes', enabled: true }, CommandType.SET_TRACK_LOG_SCALE],
     ['goto_locus', { locus: 'chr1' }, CommandType.GOTO_LOCUS],
     ['close_panel', { panel: 2 }, CommandType.CLOSE_PANEL],
+    ['show_panel_controls', { show: false }, CommandType.SET_PANEL_CONTROLS_VISIBLE],
   ];
 
   // The genes keyword travels as a preset: the file depends on the map's genome, which only
@@ -728,21 +733,39 @@ describe('panels (ADR-0007)', () => {
     expect(text(result)).toBe(`Error: ${error}`);
   });
 
-  it('list_panels asks one page for getPanelList and returns its list as JSON', async () => {
+  const panels = [
+    { panel: 1, current: false, map: 'heart', genome: 'mm10', controlMap: null, tracks: 2, locus: 'All' },
+    { panel: 2, current: true, map: 'colon', genome: 'GRCh38', controlMap: null, tracks: 0, locus: 'chr8:1-2 chr8:1-2' },
+  ];
+
+  /** Call list_panels and answer its getPanelList with `answer`; {request, result}. */
+  async function listPanels(answer) {
     const session = await newSession();
     const page = await pageIn(session);
-    const panels = [
-      { panel: 1, current: false, map: 'heart', genome: 'mm10', controlMap: null, tracks: 2, locus: 'All' },
-      { panel: 2, current: true, map: 'colon', genome: 'GRCh38', controlMap: null, tracks: 0, locus: 'chr8:1-2 chr8:1-2' },
-    ];
-
     const call = callTool(session, 'list_panels');
     const request = await page.next();
-    page.send({ type: MessageType.ACK, requestId: request.requestId, ok: true, result: panels });
-    const result = await call;
+    page.send({ type: MessageType.ACK, requestId: request.requestId, ok: true, result: answer });
+    return { request, result: await call };
+  }
+
+  it('list_panels asks one page for getPanelList and returns its list as JSON, then whether the panel controls are shown', async () => {
+    const { request, result } = await listPanels({ panels, panelControlsVisible: false });
 
     expect(request).toEqual({ type: CommandType.GET_PANEL_LIST, requestId: expect.any(String) });
+    expect(text(result)).toBe(`${JSON.stringify(panels, null, 2)}\nJuicebox Panel Controls: hidden`);
+  });
+
+  it('list_panels answered by a remote before panel controls (a bare list) returns the list alone', async () => {
+    const { result } = await listPanels(panels);
+
     expect(text(result)).toBe(JSON.stringify(panels, null, 2));
+  });
+
+  it('juicebox_help shows hiding and showing the Juicebox Panel Controls', async () => {
+    const help = text(await callTool(await newSession(), 'juicebox_help'));
+
+    expect(help).toContain('"Hide the Juicebox controls"');
+    expect(help).toContain('"Show the controls again"');
   });
 
   it('juicebox_help shows side by side, per-panel tracks, "all" and closing a panel', async () => {
