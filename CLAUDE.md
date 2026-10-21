@@ -85,7 +85,7 @@ A command tool (one that sends one command to the pages) is a row of `COMMAND_TO
 - ESM throughout (`"type": "module"`), no TypeScript, no linter.
 - Tool input schemas use zod; colors are `#rrggbb` hex.
 - Tests drive one package's public seam and assert what leaves it (socket messages, viewer calls, HTTP responses); no reaching into internals. Two exceptions: the search pipeline, whose pure modules are specced directly (design: "the prototype's vitest specs move with the modules"), and the remote's panels module (`packages/remote/src/panels.js`), specced through its own interface against the shared fake juicebox.js because both the command and the sync-event paths depend on it.
-- `.scratch/` (local issue tracker) and per-developer `.claude/settings*.json` are gitignored.
+- `.scratch/` (the former local issue tracker) and per-developer `.claude/settings*.json` are gitignored.
 
 ## Further docs
 
@@ -101,7 +101,7 @@ A command tool (one that sends one command to the pages) is a row of `COMMAND_TO
 
 ### Issue tracker
 
-Issues live as local markdown under `.scratch/<feature>/` in this repo (no GitHub issues; the fork has them disabled). See `docs/agents/issue-tracker.md`.
+Issues live as GitHub issues on `weiszd/juicebox-mcp` (use `gh`). Older features still have local markdown under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
