@@ -74,7 +74,7 @@ Publishable to npm as plain ESM, no build step; exports `.` (`src/attachRemote.j
 - `src/sessionToRestore.js` — decodes and validates the room's saved session.
 - `src/WebSocketClient.js` — the prototype's reconnecting client, with an injected socket factory.
 
-The package never imports juicebox.js: the host passes its namespace as `hic`, and `juicebox.js >=4.12.0 <5` is a peer dependency. Tests drive `attachRemote` with the shared fake `hic` and fake socket (`test/fakeJuicebox.js`); `src/panels.js` also has its own spec against that fake (`test/panelsModule.test.js`). Publishing: a GitHub release tagged `remote-v<version>` runs `.github/workflows/publish-remote.yml` (npm trusted publishing).
+The package never imports juicebox.js: the host passes its namespace as `hic`, and `juicebox.js >=4.12.0 <5` is a peer dependency. Tests drive `attachRemote` with the shared fake `hic` and fake socket (`test/fakeJuicebox.js`); `src/panels.js` also has its own spec against that fake (`test/panelsModule.test.js`). Publishing: a GitHub release tagged `v<version>` (the Remote is the only published package; tags `remote-v2.0.1-next.*` are the earlier naming) runs `.github/workflows/publish-remote.yml` (npm trusted publishing).
 
 ### Adding or changing a tool
 

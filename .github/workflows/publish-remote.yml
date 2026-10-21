@@ -1,8 +1,9 @@
 name: Publish @aidenlab/juicebox-remote to npm
 
-# Publishing a GitHub release tagged remote-v<version> publishes packages/remote at that version
-# to npm. The server is deployed with wrangler, never published; a release with any other tag is
-# not this workflow's.
+# Publishing a GitHub release tagged v<version> publishes packages/remote at that version to npm.
+# The Remote is the only package this repo publishes, so a v tag always means a Remote version. The
+# server is deployed with wrangler, never published; a release with any other tag is not this
+# workflow's.
 #
 # Authentication is npm trusted publishing (OIDC): no npm token is stored in this repo. The
 # package's settings on npmjs.com must name this repository and this workflow file
@@ -19,7 +20,7 @@ permissions:
 
 jobs:
   test:
-    if: startsWith(github.event.release.tag_name, 'remote-v')
+    if: startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +32,7 @@ jobs:
 
   publish:
     needs: test
-    if: startsWith(github.event.release.tag_name, 'remote-v')
+    if: startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     # Required reviewers on this environment make every publish wait for an approval
     environment: npm
@@ -46,7 +47,7 @@ jobs:
       - name: Check the release tag matches packages/remote/package.json
         run: |
           pkg="$(node -p "require('./packages/remote/package.json').version")"
-          if [ "${GITHUB_REF_NAME#remote-v}" != "$pkg" ]; then
+          if [ "${GITHUB_REF_NAME#v}" != "$pkg" ]; then
             echo "::error::Release tag $GITHUB_REF_NAME does not match packages/remote version $pkg"
             exit 1
           fi
