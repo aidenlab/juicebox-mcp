@@ -1,6 +1,6 @@
 {
   "name": "@aidenlab/juicebox-remote",
-  "version": "2.1.0-next.0",
+  "version": "2.1.0",
   "type": "module",
   "description": "Attach a juicebox.js viewer to a juicebox-mcp room so an LLM can drive it and peers stay in sync",
   "license": "MIT",
