@@ -499,8 +499,8 @@ export function registerTools(mcpServer, deps) {
       if (error) return error;
       // A remote before panel controls answers with the bare list.
       if (Array.isArray(result)) return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
-      const { panels, panelControls } = result;
-      return { content: [{ type: 'text', text: `${JSON.stringify(panels, null, 2)}\nJuicebox Panel Controls: ${panelControls}` }] };
+      const { panels, panelControlsVisible } = result;
+      return { content: [{ type: 'text', text: `${JSON.stringify(panels, null, 2)}\nJuicebox Panel Controls: ${panelControlsVisible ? 'shown' : 'hidden'}` }] };
     }
   );
 

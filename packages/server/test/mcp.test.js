@@ -749,7 +749,7 @@ describe('panels (ADR-0007)', () => {
   }
 
   it('list_panels asks one page for getPanelList and returns its list as JSON, then whether the panel controls are shown', async () => {
-    const { request, result } = await listPanels({ panels, panelControls: 'hidden' });
+    const { request, result } = await listPanels({ panels, panelControlsVisible: false });
 
     expect(request).toEqual({ type: CommandType.GET_PANEL_LIST, requestId: expect.any(String) });
     expect(text(result)).toBe(`${JSON.stringify(panels, null, 2)}\nJuicebox Panel Controls: hidden`);

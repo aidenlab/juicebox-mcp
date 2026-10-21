@@ -50,7 +50,7 @@ export const CommandType = Object.freeze({
  * `syncType` values carried by a `syncEvent` (§5.3). Every sync event but a page-wide one
  * also carries `panel`, the 1-based left-to-right position of the panel it happened in; one
  * without it (from a remote before ADR-0008) is for the receiver's current panel. A page-wide
- * event (`isPageWide`) never carries `panel`: it is for the receiver's whole page (ADR-0009).
+ * event never carries `panel`: its type says it is for the receiver's whole page (ADR-0009).
  */
 export const SyncEventType = Object.freeze({
   LOCUS_CHANGE: 'locusChange',
@@ -74,11 +74,6 @@ export const SyncEventType = Object.freeze({
   // Page-wide: the Juicebox Panel Controls were hidden or shown on the sender, `{visible}`.
   PANEL_CONTROLS_CHANGE: 'panelControlsChange',
 });
-
-const pageWideSyncTypes = new Set([SyncEventType.PANEL_CONTROLS_CHANGE]);
-
-/** Whether a `syncType` is for a whole page, so its event names no panel (ADR-0009). */
-export const isPageWide = (syncType) => pageWideSyncTypes.has(syncType);
 
 /** `code` values of an `error` message. */
 export const ErrorCode = Object.freeze({

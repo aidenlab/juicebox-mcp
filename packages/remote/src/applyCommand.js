@@ -188,7 +188,7 @@ const appliers = {
         locus: dataset ? locusString(browser) : null,
       };
     });
-    return { panels, panelControls: (hic.isNavbarVisible?.() ?? true) ? 'shown' : 'hidden' };
+    return { panels, panelControlsVisible: hic.isNavbarVisible?.() ?? true };
   },
 
   // One entry per panel, `{}` for one with no map, so a late joiner restores the empty panels too

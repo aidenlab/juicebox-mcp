@@ -324,6 +324,6 @@ describe('panels: getPanelList', () => {
       { panel: 2, current: false, map: null, genome: null, controlMap: null, tracks: 0, locus: null },
       { panel: 3, current: true, map: 'colon', genome: 'GRCh38', controlMap: null, tracks: 0, locus: 'All' },
     ]);
-    expect(result.panelControls).toBe('shown');
+    expect(result.panelControlsVisible).toBe(true);
   });
 });

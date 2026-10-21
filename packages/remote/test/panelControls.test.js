@@ -81,7 +81,7 @@ describe('panel controls: getPanelList', () => {
     await settle();
 
     const { result } = ackOf(socket, 'c1');
-    expect(result.panelControls).toBe('hidden');
+    expect(result.panelControlsVisible).toBe(false);
     expect(result.panels.map((p) => p.panel)).toEqual([1, 2]);
   });
 });
@@ -137,6 +137,19 @@ describe('panel controls: pages in a room agree (a page-wide sync event)', () =>
     await settle();
 
     expect(hic.isNavbarVisible()).toBe(false);
+    expect(syncEventsOf(socket)).toEqual([]);
+  });
+
+  it('a page that hid them, joining a room whose session shows them, shows them', async () => {
+    const hic = fakeHic();
+    hic.setNavbarVisible(false);
+    const socket = await joined(hic);
+    socket.sent.length = 0;
+
+    socket.receive({ type: 'peerSessionData', session: { browsers: [{ url: 'https://maps.example/room.hic' }], navbarVisible: true } });
+    await settle();
+
+    expect(hic.isNavbarVisible()).toBe(true);
     expect(syncEventsOf(socket)).toEqual([]);
   });
 
