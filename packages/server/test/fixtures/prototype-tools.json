@@ -404,7 +404,7 @@
   {
     "name": "list_panels",
     "title": "List Panels",
-    "description": "List the panels (contact-map viewers) open in the page, left to right: position, whether it is the current one, map name, genome, control map, track count and locus. Tools that take `panel` address a panel by this position, by its map name, or \"all\".",
+    "description": "List the panels (contact-map viewers) open in the page, left to right: position, whether it is the current one, map name, genome, control map, track count and locus, then whether the Juicebox Panel Controls are shown. Tools that take `panel` address a panel by this position, by its map name, or \"all\".",
     "inputSchema": {
       "type": "object",
       "properties": {},
@@ -694,6 +694,25 @@
     "inputSchema": {
       "type": "object",
       "properties": {},
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "show_panel_controls",
+    "title": "Show Panel Controls",
+    "description": "Hide or show the Juicebox Panel Controls (the bar above each map with its map name, locus box and menus) on every panel of the page, and on panels opened later: the same switch as the controls button in the page header. It always acts on the whole page, so it takes no panel. Repeating the current state changes nothing; list_panels says which it is.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "show": {
+          "type": "boolean",
+          "description": "true shows the Juicebox Panel Controls, false hides them"
+        }
+      },
+      "required": [
+        "show"
+      ],
+      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },

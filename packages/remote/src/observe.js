@@ -30,6 +30,8 @@ const BY_NAME = { byName: true };
  * carries `panel`, the sender's 1-based position, and a peer's is applied to the panel at
  * that position. Opening and closing a panel are sync events too (`panelOpen`,
  * `panelClose`), so positions stay aligned across pages, empty panels included (ADR-0008).
+ * Hiding or showing the Juicebox Panel Controls is page-wide: its event (`panelControlsChange`)
+ * names no panel and is applied to the whole page (ADR-0009).
  * Panels and tracks are resolved, opened, closed and changed through panels.js, the same
  * module the command applier uses; a track is found by its name (case-insensitively).
  * Changes made while `guard` runs are not sent, so applying a peer's sync event
@@ -111,6 +113,10 @@ export function observe(hic, container, send) {
     },
     // A restored session's panels replace the old ones, and one of them is selected.
     BrowserSelect: () => rescan(),
+    // Page-wide (juicebox.js 4.12.0): one switch on the registry, so the event names no panel (ADR-0009).
+    NavbarVisibilityChange: ({ data: { visible } }) => {
+      if (!guarded) send({ type: MessageType.SYNC_EVENT, syncType: SyncEventType.PANEL_CONTROLS_CHANGE, visible });
+    },
     TrackXYPairLoad: ({ data: trackPair }) => {
       trackNames.set(trackPair, trackPair.track.name);
       const { config } = trackPair.track;
@@ -191,6 +197,10 @@ export function observe(hic, container, send) {
     // Never the last panel: a page always shows one (closePanel refuses, and the event is dropped).
     [SyncEventType.PANEL_CLOSE]: onPanel((browser) => closePanel(hic, browser)),
     [SyncEventType.CONTROL_MAP_LOAD]: onPanel((browser, { url, name }) => browser.loadHicControlFile({ url, name })),
+    // Page-wide, so no panel is looked up; a juicebox.js before 4.12.0 has no switch to set.
+    [SyncEventType.PANEL_CONTROLS_CHANGE]: ({ visible }) => {
+      if (typeof visible === 'boolean') hic.setNavbarVisible?.(visible);
+    },
     [SyncEventType.TRACK_LOAD]: onPanel((browser, { configs }) => {
       // A url a track pair already carries (a pending one its own config, a loaded one its track's)
       // is not loaded again: a loadTrack command or a restored session reaches every page, and each

@@ -44,7 +44,8 @@ A page can hold several panels (juicebox.js viewers side by side), numbered 1, 2
 | `load_map` | load a `.hic` map; `panel: "new"` opens it in a new panel beside the others | new, one |
 | `load_control_map` | load a control map (display mode AOB) | one |
 | `close_panel` | close a panel; the ones to its right move left; never the last | one |
-| `list_panels` | the panels left to right: map, genome, control map, track count, locus | |
+| `list_panels` | the panels left to right: map, genome, control map, track count, locus; whether the Juicebox Panel Controls are shown | |
+| `show_panel_controls` | hide or show the Juicebox Panel Controls on every panel of the page (`show: true\|false`) | |
 | `goto_locus`, `zoom_in`, `zoom_out` | navigate | yes |
 | `set_map_foreground_color`, `set_map_background_color`, `set_color_scale`, `select_normalization` | map look | yes |
 | `load_track`, `remove_track`, `set_track_color`, `set_track_name`, `set_track_data_range`, `set_track_autoscale`, `set_track_log_scale` | tracks, by name or 1-based number (by name only with `"all"`) | yes |

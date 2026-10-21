@@ -60,6 +60,10 @@ _Avoid_: browser (in juicebox.js a browser is a HiCBrowser panel), client
 One juicebox.js contact-map viewer inside a page (a HiCBrowser). A page holds one or more panels, ordered left to right; tools address one by its 1-based position in that order, or by its map name when unique, or all at once.
 _Avoid_: browser, map (the .hic file), view
 
+**Juicebox Panel Controls**:
+juicebox.js's navbar: the bar above each panel's map with its map name, locus box and menus. One switch hides or shows it on every panel of a page, panels opened later included.
+_Avoid_: navbar (juicebox.js's own name), toolbar, controls (alone)
+
 **Host**:
 The shell or site that embeds juicebox.js and attaches a remote: juicebox-web, embed.html, any third-party site.
 _Avoid_: frontend, app
@@ -90,3 +94,6 @@ _Avoid_: response, result
 **Sync event**:
 A remote→room message describing a change made in one panel of that page, or a panel opened or closed there, named by position; relayed to peers only, never back to the sender.
 _Avoid_: sync command, update
+
+**Page-wide sync event**:
+A sync event for state that belongs to the whole page rather than one panel; it names no panel, and its type says so (ADR-0009). Today only the Juicebox Panel Controls being hidden or shown.

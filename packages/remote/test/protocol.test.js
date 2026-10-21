@@ -10,6 +10,7 @@ const {
   isCommand,
   isSyncEvent,
   isAck,
+  isPageWide,
 } = protocol;
 
 describe('protocol: catalogue', () => {
@@ -48,7 +49,7 @@ describe('protocol: catalogue', () => {
         'loadMap', 'loadControlMap', 'closePanel', 'loadSession', 'gotoLocus', 'zoomIn', 'zoomOut',
         'setForegroundColor', 'setBackgroundColor', 'setColorScale', 'setNormalization',
         'loadTrack', 'getTrackList', 'getPanelList', 'removeTrack', 'setTrackColor', 'setTrackName',
-        'setTrackDataRange', 'setTrackAutoscale', 'setTrackLogScale',
+        'setTrackDataRange', 'setTrackAutoscale', 'setTrackLogScale', 'setPanelControlsVisible',
         'getSession', 'getCompressedSession',
       ].sort(),
     );
@@ -60,7 +61,7 @@ describe('protocol: catalogue', () => {
         'locusChange', 'colorScaleChange', 'backgroundColorChange', 'normalizationChange',
         'displayModeChange', 'mapLoad', 'controlMapLoad', 'trackLoad', 'trackRemove',
         'trackColorChange', 'trackNameChange', 'trackDataRangeChange',
-        'trackAutoscaleChange', 'trackLogScaleChange', 'panelOpen', 'panelClose',
+        'trackAutoscaleChange', 'trackLogScaleChange', 'panelOpen', 'panelClose', 'panelControlsChange',
       ].sort(),
     );
   });
@@ -92,5 +93,13 @@ describe('protocol: guards', () => {
     expect(isAck({ type: 'ack', ok: true })).toBe(false);
     expect(isAck({ type: 'joined', requestId: 'r1', ok: true })).toBe(false);
     expect(isAck(null)).toBe(false);
+  });
+});
+
+describe('protocol: page-wide sync events (ADR-0009)', () => {
+  it('panelControlsChange is page-wide; a panel’s sync event is not', () => {
+    expect(isPageWide('panelControlsChange')).toBe(true);
+    expect(isPageWide('locusChange')).toBe(false);
+    expect(isPageWide('panelOpen')).toBe(false);
   });
 });

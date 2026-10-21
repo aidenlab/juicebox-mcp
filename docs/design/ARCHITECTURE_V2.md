@@ -144,7 +144,8 @@ too; the command applier keeps only tool semantics and result lines.
 | `setNormalization {panel}` | one or all | `browser.setNormalization(n)` |
 | `loadTrack {url\|preset,name?,color?,panel}` | one or all | `browser.loadTracks([config])` (does not await completion — ADR‑0017); `preset: "genes"` becomes the UCSC NCBI RefSeq file for that panel's `dataset.genomeId` |
 | `getTrackList {requestId,panel}` | one | enumerate `browser.trackPairs` then `browser.tracks2D` → reply `trackListData` |
-| `getPanelList {requestId}` | — | `hic.getAllBrowsers()` → `[{panel, current, map, genome, controlMap, tracks, locus}]` |
+| `getPanelList {requestId}` | — | `hic.getAllBrowsers()` → `{panels: [{panel, current, map, genome, controlMap, tracks, locus}], panelControls: "shown"\|"hidden"}` (`hic.isNavbarVisible()`; a remote before ADR-0009 answers the bare list) |
+| `setPanelControlsVisible {show}` | — (page-wide) | `hic.setNavbarVisible(show)` (juicebox.js 4.12.0), a no-op when unchanged; needs no map; result `Juicebox Panel Controls hidden on N panels` (ADR-0009) |
 | `removeTrack`, `setTrackColor`, `setTrackName`, `setTrackDataRange`, `setTrackAutoscale`, `setTrackLogScale` `{track,…,panel}` | one or all | resolve by name or 1‑based index (by name only with `"all"`), then `layoutController.removeTrackXYPair(tp)` / `tp.setColor` / `tp.setTrackLabelName` / `tp.setDataRange` / `tp.track.autoscale=` / `tp.track.logScale=` |
 | `getSession` / `getCompressedSession {requestId}` | `hic.toJSON()` / `hic.compressedSession()` → reply |
 | `syncEvent` | §5.3, with the re‑entrancy guard |
@@ -164,11 +165,13 @@ too; the command applier keeps only tool semantics and result lines.
 | `EventBus` `TrackXYPairLoad` / `TrackXYPairRemoval` / `TrackXYPairChange` | `trackLoad` / `trackRemove` / `track*Change` |
 | global `EventBus` `BrowserAdd` (fork build) | `panelOpen {panel}` — a peer opens an empty panel only at one past its last |
 | global `EventBus` `BrowserDelete` (fork build) | `panelClose {panel}` — the position it leaves; a peer never closes its last panel |
+| global `EventBus` `NavbarVisibilityChange` (4.12.0) | `panelControlsChange {visible}` — page-wide, no `panel`; a peer calls `hic.setNavbarVisible(visible)` (ADR-0009) |
 
 Receiving a `syncEvent` sets `isSyncing = true` around the apply so the
 resulting callbacks are not re‑emitted. Same rule as the prototype.
 
-Every sync event carries `panel`, the sender's 1-based left-to-right position
+Every sync event but a page-wide one (`isPageWide(syncType)`, today only
+`panelControlsChange`, ADR-0009) carries `panel`, the sender's 1-based left-to-right position
 (what `list_panels` prints), and is applied to the receiver's panel at that
 position; a position the receiver lacks is dropped. The position is looked up,
 `panelOpen` / `panelClose` applied, and a track event's track found (by name,

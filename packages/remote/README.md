@@ -84,7 +84,7 @@ open and fails, listing the panels, when several are. A panel command's ack name
 acted on in `result`, one line per panel for `"all"`. `loadMap {panel: "new"}` opens a browser with
 `hic.createBrowser(container, …)`; `closePanel` removes one (never the last) with `hic.deleteBrowser(browser)`, or
 `browser.registry.delete(browser)` on a juicebox.js without that export (4.7.0); `getPanelList`
-answers the list of panels.
+answers the list of panels and whether the Juicebox Panel Controls are shown.
 
 Sync events are kept per panel too: every panel is followed, each event carries `panel`, the
 sender's position, and a peer applies it to its panel at that position, dropping it when it has
@@ -96,6 +96,16 @@ a panel the peer has. An event without `panel` (from an older remote) applies to
 panel. A peer's `getSession` answer, which a late joiner restores, lists one entry per panel,
 `{}` for an empty one; the room's stored session (`hic.compressedSession()`) still skips them.
 ADR-0008.
+
+### Panel controls
+
+The Juicebox Panel Controls (juicebox.js's navbar) are one switch for the whole page, on
+juicebox.js 4.12.0's browser registry. `setPanelControlsVisible {show}` sets it with
+`hic.setNavbarVisible(show)`. A change on the page (the host's own button) is sent as the
+page-wide sync event `panelControlsChange {visible}`, which names no panel, and a peer applies it
+to its whole page. The state is in the session (`navbarVisible`), so a late joiner restoring the
+room's session matches. On a juicebox.js without `setNavbarVisible` the command fails and the
+event is dropped. ADR-0009.
 
 **Host requirements:** the remote hears a panel open and close from juicebox.js's global
 `BrowserAdd` and `BrowserDelete` events (juicebox.js fork build; not posted by a restore or a

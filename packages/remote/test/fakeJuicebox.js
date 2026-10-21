@@ -9,7 +9,8 @@ import { deflateRawSync } from 'node:zlib';
  *
  * hic (fakeHic): EventBus.globalBus {subscribe, unsubscribe}, getCurrentBrowser,
  *   getAllBrowsers, setCurrentBrowser, createBrowser, deleteBrowser (absent with
- *   `deleteBrowser: false`), restoreSession, toJSON, compressedSession.
+ *   `deleteBrowser: false`), restoreSession, toJSON, compressedSession,
+ *   setNavbarVisible, isNavbarVisible (juicebox.js 4.12.0; absent with `navbar: false`).
  * browser: config, registry.delete, dataset, controlDataset, state {chr1, getLocus},
  *   coordinator.addCallback, getSyncState, syncState, parseGotoInput, zoomAndCenter,
  *   loadHicFile, loadHicControlFile, setNormalization, getDisplayMode, setDisplayMode,
@@ -295,8 +296,9 @@ function fakeBrowser(bus, { entry, config = { width: 640, height: 480 }, registr
  *   turns on the per-mode colour scale (see fakeBrowser), recorded in the session
  * @param {string} [opts.selectedGene]  recorded in the session
  * @param {boolean} [opts.deleteBrowser=true]  false: no hic.deleteBrowser (juicebox.js 4.7.0)
+ * @param {boolean} [opts.navbar=true]  false: no hic.setNavbarVisible / isNavbarVisible (before juicebox.js 4.12.0)
  */
-export function fakeHic({ panels = 1, trackPairs, tracks2D, autoThreshold, selectedGene, deleteBrowser = true } = {}) {
+export function fakeHic({ panels = 1, trackPairs, tracks2D, autoThreshold, selectedGene, deleteBrowser = true, navbar = true } = {}) {
   const bus = fakeBus();
   // Browsers share one registry, as juicebox.js's do.
   const registry = {
@@ -307,6 +309,8 @@ export function fakeHic({ panels = 1, trackPairs, tracks2D, autoThreshold, selec
   };
   const newBrowser = (entry, config) => fakeBrowser(bus, { entry, config, registry, autoThreshold });
   const entries = typeof panels === 'number' ? Array.from({ length: panels }, () => MAP_A) : panels;
+  // The Juicebox Panel Controls (juicebox.js's navbar) are one switch on the registry.
+  let navbarVisible = true;
 
   const hic = {
     EventBus: { globalBus: bus },
@@ -328,6 +332,7 @@ export function fakeHic({ panels = 1, trackPairs, tracks2D, autoThreshold, selec
     }),
     restoreSession: vi.fn(async (container, session) => {
       await tick();
+      if (navbar && Object.hasOwn(session, 'navbarVisible')) hic.setNavbarVisible(session.navbarVisible);
       hic.browsers = session.browsers.map((entry) => newBrowser(entry));
       hic.setCurrentBrowser(hic.browsers[0]);
       for (const browser of hic.browsers.filter((b) => b.dataset)) {
@@ -344,6 +349,8 @@ export function fakeHic({ panels = 1, trackPairs, tracks2D, autoThreshold, selec
           ...(autoThreshold ? { displayMode: b.displayMode, threshold: b.colorScale.getThreshold() } : {}),
         })),
       ...(selectedGene ? { selectedGene } : {}),
+      // Only when hidden (ADR-0009); juicebox.js 4.12 writes it either way, which restores the same.
+      ...(navbarVisible ? {} : { navbarVisible: false }),
     })),
     compressedSession: vi.fn(() => compress(hic.toJSON())),
     get session() {
@@ -371,6 +378,16 @@ export function fakeHic({ panels = 1, trackPairs, tracks2D, autoThreshold, selec
       return track2D;
     },
   };
+  if (navbar) {
+    // As juicebox.js's: a no-op when unchanged, else every panel follows and the change is posted.
+    hic.setNavbarVisible = vi.fn((visible) => {
+      visible = !!visible;
+      if (visible === navbarVisible) return;
+      navbarVisible = visible;
+      bus.post('NavbarVisibilityChange', { registry, visible });
+    });
+    hic.isNavbarVisible = vi.fn(() => navbarVisible);
+  }
   if (deleteBrowser) {
     hic.deleteBrowser = vi.fn((browser) => {
       bus.post('BrowserDelete', browser);
