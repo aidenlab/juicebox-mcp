@@ -163,8 +163,8 @@ too; the command applier keeps only tool semantics and result lines.
 | `addCallback('onDisplayMode')` | `displayModeChange` |
 | `addCallback('onMapLoaded')`, `('onControlMapLoaded')` | `mapLoad` / `controlMapLoad` (url, name read off `dataset`) |
 | `EventBus` `TrackXYPairLoad` / `TrackXYPairRemoval` / `TrackXYPairChange` | `trackLoad` / `trackRemove` / `track*Change` |
-| global `EventBus` `BrowserAdd` (fork build) | `panelOpen {panel}` — a peer opens an empty panel only at one past its last |
-| global `EventBus` `BrowserDelete` (fork build) | `panelClose {panel}` — the position it leaves; a peer never closes its last panel |
+| global `EventBus` `BrowserAdd` (4.12.0) | `panelOpen {panel}` — a peer opens an empty panel only at one past its last |
+| global `EventBus` `BrowserDelete` (4.12.0) | `panelClose {panel}` — the position it leaves; a peer never closes its last panel |
 | global `EventBus` `NavbarVisibilityChange` (4.12.0) | `panelControlsChange {visible}` — page-wide, no `panel`; a peer calls `hic.setNavbarVisible(visible)` (ADR-0009) |
 
 Receiving a `syncEvent` sets `isSyncing = true` around the apply so the

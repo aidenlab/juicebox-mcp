@@ -8,7 +8,7 @@ can drive it and every page in the room stays in sync.
 npm install juicebox.js @aidenlab/juicebox-remote
 ```
 
-`juicebox.js` is a peer dependency (`>=4.10.0-mcp.1 <5`: the fork build on the npm dist-tag `mcp`, until the hooks it needs are in an upstream release). The package never imports it: you pass in
+`juicebox.js` is a peer dependency (`>=4.12.0 <5`). The package never imports it: you pass in
 your own namespace import, so the viewer is bundled once. Plain ESM, no build step.
 
 ## Embed example
@@ -108,7 +108,7 @@ room's session matches. On a juicebox.js without `setNavbarVisible` the command 
 event is dropped. ADR-0009.
 
 **Host requirements:** the remote hears a panel open and close from juicebox.js's global
-`BrowserAdd` and `BrowserDelete` events (juicebox.js fork build; not posted by a restore or a
+`BrowserAdd` and `BrowserDelete` events (juicebox.js 4.12.0; not posted by a restore or a
 reset). Without them panels still open and close locally, but peers are not told. A host that
 creates a panel must also select it (`hic.setCurrentBrowser`), as juicebox-web's clone button
 and juicebox.js's own restore do: the remote scans the panels again on every selection (and
