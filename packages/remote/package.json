@@ -34,7 +34,7 @@
     "src/"
   ],
   "peerDependencies": {
-    "juicebox.js": ">=4.12.0 <5"
+    "juicebox.js": "^4.12.0"
   },
   "publishConfig": {
     "access": "public"
