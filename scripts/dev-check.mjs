@@ -3,7 +3,7 @@
 //
 //   node scripts/dev-check.mjs <room> <tool> ['<json args>']
 //   node scripts/dev-check.mjs T35CHECKCQ list_panels
-//   node scripts/dev-check.mjs T35CHECKCQ load_map '{"url":"https://hicfiles.s3.amazonaws.com/hiseq/gm12878/in-situ/combined.hic","panel":"new"}'
+//   node scripts/dev-check.mjs T35CHECKCQ load_map '{"url":"https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/31811e40-e3ca-4456-8ba6-2ee66d6c7104/4DNFI7J8BQ4P.hic","panel":"new"}'
 //   (a map known to load in the page; an ENCODE portal download URL may fail with "Failed to fetch")
 //
 // Use a throwaway room (open https://juicebot-view-dev.pages.dev/?room=<room> in a tab first), never
@@ -42,7 +42,13 @@ const [, sessionId] = await rpc(1, 'initialize', {
   capabilities: {},
   clientInfo: { name: 'dev-check', version: '0' },
 });
-await rpc(2, 'tools/call', { name: 'join_room', arguments: { room } }, sessionId);
+// A refused join leaves the session in its own new room, with no page: stop rather than probe it.
+const [joined] = await rpc(2, 'tools/call', { name: 'join_room', arguments: { room } }, sessionId);
+if (joined.result?.isError || joined.error) {
+  const why = (joined.result?.content || []).map((c) => c.text).join('\n');
+  console.error(why || JSON.stringify(joined, null, 2));
+  process.exit(1);
+}
 const [reply] = await rpc(3, 'tools/call', { name: tool, arguments: JSON.parse(argsJson) }, sessionId);
 const text = (reply.result?.content || []).map((c) => c.text).join('\n');
 console.log(text || JSON.stringify(reply, null, 2));

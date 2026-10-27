@@ -16,6 +16,7 @@ import { hicExperiments, formatHicExperiments, encodeSearch, formatEncodeSearch,
 import { VIEW_URI, VIEW_HTML, VIEW_META, VIEW_MIME_TYPE, TOOL_META } from './juiceboxView.js';
 import { CommandType } from '@aidenlab/juicebox-remote/protocol';
 import { AckStatus, ACK_TIMEOUT_MS } from '../room.js';
+import { ROOM_ID } from '../roomId.js';
 
 const ACK_TIMEOUT_S = ACK_TIMEOUT_MS / 1000;
 
@@ -23,9 +24,6 @@ const ACK_TIMEOUT_S = ACK_TIMEOUT_MS / 1000;
 function hexToRgb(hex) {
   return { r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) };
 }
-
-// Room ids: 10 Crockford base32 characters (design §5.4)
-const ROOM_ID = /^[0-9A-HJKMNP-TV-Z]{10}$/i;
 
 // Zod schema for color input
 const colorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a hex color code (e.g., "#ff0000")')

@@ -2,7 +2,7 @@
  * Cloudflare Worker entry point for Juicebox MCP Server.
  *
  * Routes:
- *   GET  /ws?room=        - WebSocket upgrade → the room's Durable Object (pages); Origin allow-list
+ *   GET  /ws?room=        - WebSocket upgrade → the room's Durable Object (pages); Origin allow-list, room id check
  *   POST /mcp             - MCP protocol (tool calls, initialization)
  *   GET  /mcp             - 405 (SSE not supported; JSON responses only)
  *   DELETE /mcp           - MCP protocol (session termination)
@@ -14,26 +14,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { registerTools } from './mcp/toolHandlers.js';
 import { roomForSession } from './room.js';
+import { ROOM_ID, roomIdFromBytes, mintRoomId } from './roomId.js';
 import { tinyURLShortener } from './urlShortener.js';
 import { logInfo, logWarn, logError } from './lib/logger.js';
 
 // Re-export the Durable Object classes so Cloudflare can find them
 export { WebSocketRoom } from './durableObjects/WebSocketRoom.js';
 export { McpSession } from './durableObjects/McpSession.js';
-
-const CROCKFORD_BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-
-/**
- * A room id: 10 Crockford base32 characters (~50 bits), short enough for a
- * small join-link QR, long enough to be unguessable (design §5.4).
- */
-function roomIdFromBytes(bytes) {
-  return Array.from(bytes.subarray(0, 10), b => CROCKFORD_BASE32[b & 31]).join('');
-}
-
-function mintRoomId() {
-  return roomIdFromBytes(crypto.getRandomValues(new Uint8Array(10)));
-}
 
 /**
  * Derive a stable room id from a vendor-specific header value using HMAC-SHA256,
@@ -86,6 +73,10 @@ export default {
       }
       // No room given: mint one. The Durable Object reads it back from the URL.
       const room = url.searchParams.get('room') || mintRoomId();
+      if (!ROOM_ID.test(room)) {
+        logWarn(`[WS] refused room: ${room}`);
+        return new Response('room must be 10 Crockford base32 characters', { status: 400 });
+      }
       url.searchParams.set('room', room);
       const stub = env.WEBSOCKET_ROOM.get(env.WEBSOCKET_ROOM.idFromName(room));
       return stub.fetch(new Request(url, request));

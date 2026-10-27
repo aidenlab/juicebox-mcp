@@ -58,8 +58,8 @@ are a different Durable Object namespace, so they cannot drive a page on the dev
 ROOM=T$(tr -dc 'A-HJKMNP-TV-Z0-9' </dev/urandom | head -c9)   # a fresh throwaway room
 # open https://juicebot-view-dev.pages.dev/?room=$ROOM in one or two tabs, then:
 node scripts/dev-check.mjs $ROOM list_panels
-node scripts/dev-check.mjs $ROOM load_map '{"url":"https://hicfiles.s3.amazonaws.com/hiseq/gm12878/in-situ/combined.hic","name":"GM"}'
-node scripts/dev-check.mjs $ROOM load_map '{"url":"https://hicfiles.s3.amazonaws.com/hiseq/gm12878/in-situ/combined.hic","name":"GM2","panel":"new"}'
+node scripts/dev-check.mjs $ROOM load_map '{"url":"https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/31811e40-e3ca-4456-8ba6-2ee66d6c7104/4DNFI7J8BQ4P.hic","name":"GM"}'
+node scripts/dev-check.mjs $ROOM load_map '{"url":"https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/31811e40-e3ca-4456-8ba6-2ee66d6c7104/4DNFI7J8BQ4P.hic","name":"GM2","panel":"new"}'
 ```
 
 Always a fresh room, never one someone is working in: the room asks its first live page for

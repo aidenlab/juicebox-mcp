@@ -57,6 +57,16 @@ describe('join', () => {
     expect(await join(second, room)).toEqual({ type: MessageType.JOINED, room });
   });
 
+  it('a room that is not 10 Crockford base32 characters is refused with 400', async () => {
+    expect((await upgrade('?room=SMOKETEST1')).status).toBe(400); // O and I are not in the alphabet
+    expect((await upgrade('?room=7ZQH4M2K9')).status).toBe(400); // 9 characters
+  });
+
+  it('a valid room id upgrades', async () => {
+    const page = await openPage('?room=SMKTEST001');
+    expect(await join(page, 'SMKTEST001')).toEqual({ type: MessageType.JOINED, room: 'SMKTEST001' });
+  });
+
   it('the query parameter is room; sessionId is not accepted', async () => {
     const page = await openPage('?sessionId=7ZQH4M2K9X');
     const { room } = await join(page);
