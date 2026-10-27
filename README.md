@@ -53,7 +53,7 @@ A page can hold several panels (juicebox.js viewers side by side), numbered 1, 2
 | `load_session`, `save_session`, `create_shareable_url` | session JSON in and out; snapshot link | |
 | `search_encode_hic` | live ENCODE portal: Hi-C experiments (tissues, intact Hi-C, cell lines) with their map and track files | |
 | `search_encode` | live ENCODE portal: any other assay, annotation, biosample, file | |
-| `search_map_catalogs` | the curated ENCODE and 4DN catalogs juicebox-web ships (was `search_maps`) | |
+| `search_map_catalogs` | the curated ENCODE and 4DN catalogs on igv-data (was `search_maps`) | |
 | `get_map_details`, `get_data_source_statistics`, `list_data_sources` | catalog details and counts | |
 | `juicebox_help`, `get_server_status` | examples; server status | |
 

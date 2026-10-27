@@ -2,7 +2,7 @@
  * Data Source Configuration Registry
  * 
  * Centralized registry for Hi-C contact map data sources. The catalog URL and
- * columns come from the juicebox-web copy in catalogs.js; the rest is how the
+ * columns come from catalogs.js; the rest is how the
  * search pipeline reads each TSV.
  */
 

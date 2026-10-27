@@ -21,7 +21,7 @@
  *
  */
 
-/** `tags` label the links in the TinyURL account, as juicebox-web's own shortener tags its with "juicebox". */
+/** `tags` label the links in the TinyURL account. */
 function tinyURLShortener({endpoint, apiKey, domain, tags}) {
 
     endpoint = endpoint || "https://api.tinyurl.com/create";

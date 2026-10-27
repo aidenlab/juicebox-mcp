@@ -2,7 +2,7 @@
  * Search pipeline seam: query in, ranked maps and formatted text out.
  * Exercises the moved modules (queryExpander → mapFilter → resultFormatter)
  * without network, and parses rows copied from the live igv-data catalogs
- * through the juicebox-web column lists.
+ * through the catalog column lists.
  */
 import { describe, test, expect, afterEach, vi } from 'vitest';
 import { getDataSource } from '../src/search/dataSourceConfigs.js';
@@ -54,7 +54,7 @@ async function parseFixture(sourceId, tsv) {
   return { maps, fetched: fetchSpy.mock.calls[0][0] };
 }
 
-describe('catalogs copied from juicebox-web', () => {
+describe('the igv-data catalogs', () => {
   afterEach(() => vi.restoreAllMocks());
 
   test.each([

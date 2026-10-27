@@ -1,12 +1,7 @@
 /**
- * source: juicebox-web js/encodeContactMapDatasourceConfig.js
- *         juicebox-web js/fourdnContactMapDatasourceConfig.js
- *         (aidenlab/juicebox-web master @ 974443b)
- *
- * Copied, not imported, so chat search and the juicebox-web catalog modals read
- * the same igv-data TSVs with the same columns (design §6, §11 Q2). Keep these
- * two objects identical to juicebox-web; server-only fields live in
- * dataSourceConfigs.js.
+ * The two curated contact-map catalogs: the ENCODE and 4DN TSVs on
+ * igvteam/igv-data, and the columns read from each (design §6, §11 Q2).
+ * Server-only fields live in dataSourceConfigs.js.
  */
 
 const encodeContactMapDatasourceConfiguration =

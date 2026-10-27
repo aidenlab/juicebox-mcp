@@ -805,8 +805,8 @@ Just ask:
   );
 
   // --- Tool: search_map_catalogs (renamed from search_maps, ticket 24) ---
-  // What it does: downloads the two curated igv-data TSV catalogs that juicebox-web's
-  // "load from ENCODE / 4DN" modals use (src/search/catalogs.js), and fuzzy-matches every
+  // What it does: downloads the two curated igv-data TSV catalogs (ENCODE and 4DN,
+  // src/search/catalogs.js), and fuzzy-matches every
   // whitespace-separated query term (with genome/cell-line synonyms) against the catalog
   // columns; every term must match somewhere (AND).
   // Limitations: the catalogs are static lists, not the portals. ENCODE ≈176 rows, cell
