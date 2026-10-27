@@ -361,7 +361,7 @@ export function fakeHic({ panels = 1, trackPairs, tracks2D, autoThreshold, selec
       hic.current = hic.browsers[0];
     },
     newBrowser: () => newBrowser(MAP_A),
-    /** juicebox-web's clone button: an empty panel on the right, selected. */
+    /** A host's clone-panel button: an empty panel on the right, selected. */
     clone: async () => {
       const browser = await hic.createBrowser();
       hic.setCurrentBrowser(browser);

@@ -9,7 +9,7 @@ AI control for the juicebox.js Hi-C contact map viewer, as a plug-in. Two packag
 - `packages/remote` — `@aidenlab/juicebox-remote`, a browser library that attaches a juicebox.js viewer to a room on the server so an LLM can drive it and peers stay in sync.
 - `packages/server` — the Cloudflare Worker MCP server (`/mcp`) plus a Durable Object per room (`/ws`). Deployed with wrangler, never published.
 
-The viewer itself lives upstream in juicebox.js (4.12.0 and later carry the hooks the remote needs), and the hosting web page is juicebox-web. Neither is vendored here. The design is `docs/design/ARCHITECTURE_V2.md`; decisions are in `docs/adr/`.
+The viewer itself lives upstream in juicebox.js (4.12.0 and later carry the hooks the remote needs), and the hosting web page is juicebox-view (ADR-0010). Neither is vendored here. The design is `docs/design/ARCHITECTURE_V2.md`; decisions are in `docs/adr/`.
 
 The pre-v2 prototype (Node `.mcpb` server, vendored viewer, Vite frontend) is preserved on branch `prototype` and tag `v1.1.0-prototype`. Do not port code from it without checking the design first.
 
@@ -27,17 +27,14 @@ npm run test:run -- -t "substring of name"                # one test
 
 # Server
 npm run dev:server             # wrangler dev on :8787
-npm run deploy:server          # wrangler deploy (the prototype Worker on jbmcp.3dg.io)
-(cd packages/server && npx wrangler deploy --env dev)        # the Juicebot dev Worker (web stack), juicebot-mcp-dev.3dg.io
-(cd packages/server && npx wrangler deploy --env view-dev)   # the view stack's Worker, juicebot-view-mcp-dev.3dg.io
-scripts/deploy-web-dev.sh web  # build ../juicebox-web (fork master) → Pages juicebot-web-dev, juicebot-dev.3dg.io
-scripts/deploy-web-dev.sh view # build ../juicebox-view → Pages juicebot-view-dev, juicebot-view-dev.pages.dev
-scripts/deploy-test.sh <web|view> <page-repo> [branch-or-tag] [mcp-ref]   # one dev stack from your clone of juicebox-web or juicebox-view at a branch or tag (default its main branch) (+ its Worker at mcp-ref, default HEAD; WORKER=0 skips it)
+(cd packages/server && npx wrangler deploy --env view-dev)   # the dev Worker, juicebot-view-mcp-dev.3dg.io
+scripts/deploy-web-dev.sh      # build ../juicebox-view → Pages juicebot-view-dev, juicebot-view-dev.pages.dev
+scripts/deploy-test.sh <page-repo> [branch-or-tag] [mcp-ref]   # the dev stack from your clone of juicebox-view at a branch or tag (default main) (+ its Worker at mcp-ref, default HEAD; WORKER=0 skips it)
 scripts/deploy-prod.sh prod-YYYY-MM-DD   # Juicebot production from that tag on both repos (Worker juicebot-mcp + Pages juicebot-web)
-scripts/deploy-wizard.sh       # maintainer deploy + onboarding, interactive (login, secrets, Pages var, clients); DEPLOY_ENV=dev
+scripts/deploy-wizard.sh       # maintainer deploy + onboarding, interactive (login, secrets, clients); DEPLOY_ENV=view-dev (default) or prod
 ```
 
-Server config lives in `packages/server/wrangler.toml` (`[vars]`: `BROWSER_URL`, `TINYURL_DOMAIN`, `TINYURL_ENDPOINT`, `ALLOWED_ORIGINS` — the exact-match `Origin` allow-list for `/ws`). It declares the `jbmcp.3dg.io` custom domain. Development runs on the separate **Juicebot dev** stack (`[env.dev]`: Worker `juicebot-mcp-dev` at juicebot-mcp-dev.3dg.io, page at juicebot-dev.3dg.io); the earlier demo stack (`[env.v2]`, juicebox-mcp-v2 + juicebox-v2.3dg.io) is frozen at tag `demo-2026-10` and is not redeployed. **Production** (`[env.prod]`: Worker `juicebot-mcp` at juicebot-mcp.3dg.io, the URL the juicebot plugin uses; page Pages `juicebot-web` at juicebot.3dg.io) is deployed only by `scripts/deploy-prod.sh` from a `prod-YYYY-MM-DD` tag pushed on both juicebox-mcp and juicebox-web; rollback is the previous tag. "Juicebot" is the product name of the AI-enabled juicebox; the dev stack carries a `-dev` suffix everywhere so the production release only adds the un-suffixed names. Secrets `TINYURL_API_KEY` and `SESSION_HMAC_SECRET` are set with `wrangler secret put` (locally in `packages/server/.dev.vars`, from `.dev.vars.example`); without `SESSION_HMAC_SECRET` the `x-openai-session` (ChatGPT) path fails rather than using a default key.
+Server config lives in `packages/server/wrangler.toml` (`[vars]`: `BROWSER_URL`, `TINYURL_DOMAIN`, `TINYURL_ENDPOINT`, `ALLOWED_ORIGINS` — the exact-match `Origin` allow-list for `/ws`). The top level names no route (it holds shared settings and the values `wrangler dev` and the tests read); every deploy names an env. Development runs on the **Juicebot dev** stack (`[env.view-dev]`: Worker `juicebot-view-mcp-dev` at juicebot-view-mcp-dev.3dg.io, page Pages `juicebot-view-dev` at juicebot-view-dev.pages.dev). **Production** (`[env.prod]`: Worker `juicebot-mcp` at juicebot-mcp.3dg.io, the URL the juicebot plugin uses; page Pages `juicebot-web` at juicebot.3dg.io, a name kept from when the page was juicebox-web) is deployed only by `scripts/deploy-prod.sh` from a `prod-YYYY-MM-DD` tag pushed on both juicebox-mcp and juicebox-view; rollback is the previous tag (tags up to `prod-2026-10-11.1` built juicebox-web: use the script from that tag). "Juicebot" is the product name of the AI-enabled juicebox; the dev stack carries a `-dev` suffix everywhere so production uses the un-suffixed names. Secrets `TINYURL_API_KEY` and `SESSION_HMAC_SECRET` are set with `wrangler secret put` (locally in `packages/server/.dev.vars`, from `.dev.vars.example`); without `SESSION_HMAC_SECRET` the `x-openai-session` (ChatGPT) path fails rather than using a default key.
 
 ## Architecture
 
@@ -57,7 +54,7 @@ A tool call flows: client → `/mcp` tool handler → Durable Object → WebSock
 - `src/durableObjects/McpSession.js` — one Durable Object per MCP session; stores the room `join_room` bound it to (`getRoom`/`setRoom` over RPC).
 - `src/room.js` — the only way the Worker reaches a room: `roomForSession(env, sessionId)` resolves the session's room (the `join_room` binding, else the session id) and returns a handle (`send`, `request`, `isConnected`, `current`, `bind`) over the two Durable Objects' RPC methods, and re-exports the room's ack outcomes (`AckStatus`) and `ACK_TIMEOUT_MS` for the tools.
 - `src/mcp/toolHandlers.js` — the single `registerTools(mcpServer, deps)` tool catalogue: the command tools as rows of `COMMAND_TOOLS` registered in one loop, the request and local tools hand-registered. `deps` is `{sessionId, browserUrl, shortenURL, log, room}`, `room` being that handle.
-- `src/search/` — dataset search pipeline: `catalogs` (ENCODE and 4DN igv-data TSV URLs + columns, copied from juicebox-web; keep in sync) → `dataSourceConfigs` (how each TSV is read) → `dataParsers` → `metadataEnricher` → `queryExpander` (genomics synonym dictionary) → `mapFilter` → `resultFormatter`. Beside it, `encodePortal.js` is the live ENCODE portal client behind `search_encode_hic` / `search_encode` (portal facts in its header).
+- `src/search/` — dataset search pipeline: `catalogs` (ENCODE and 4DN igv-data TSV URLs + the columns read from them) → `dataSourceConfigs` (how each TSV is read) → `dataParsers` → `metadataEnricher` → `queryExpander` (genomics synonym dictionary) → `mapFilter` → `resultFormatter`. Beside it, `encodePortal.js` is the live ENCODE portal client behind `search_encode_hic` / `search_encode` (portal facts in its header).
 - `src/mcp/juiceboxView.js` — the MCP App view (`ui://juicebox/join`, SEP-1865) that `get_juicebox_url` names in `_meta`: a card with the join link and its QR (from `structuredContent`), shown in the app pane by hosts that render MCP Apps; the link opens through the host. Claude's sandbox forbids framing other origins, so the viewer itself is not embedded.
 - `src/qrPng.js`, `src/urlShortener.js` — join-link QR and TinyURL helpers.
 - `src/lib/logger.js` — use `logInfo`/`logWarn`/`logError` in server code; **no `console.log` in tool paths**.
@@ -90,9 +87,9 @@ A command tool (one that sends one command to the pages) is a row of `COMMAND_TO
 ## Further docs
 
 - `CODING_STANDARDS.md` — judgement rules applied at code review (the mechanical ones are the tests and CI).
-- `docs/juicebox-view-development.md` — the juicebox-view iteration loop: local relay + juicebox-view, the round trip, deploying to the view dev stack.
-- `docs/local-testing.md` — local relay + page, and driving the dev stack with `scripts/dev-check.mjs`.
-- `docs/test-deployment.md` — the two dev stacks (web and view) and deploying a tag to either with `scripts/deploy-test.sh`.
+- `docs/juicebox-view-development.md` — the juicebox-view iteration loop: local relay + juicebox-view, the round trip, deploying to the dev stack.
+- `docs/local-testing.md` — previewing the join card, the tests, and driving the dev stack with `scripts/dev-check.mjs`.
+- `docs/test-deployment.md` — the dev stack and deploying a tag to it with `scripts/deploy-test.sh`.
 - `docs/design/ARCHITECTURE_V2.md` — the accepted design (protocol tables in §5, repo plan in §9).
 - `docs/adr/` — architecture decision records.
 - Prototype-era notes (`docs/mcp-notes/`, `docs/datasource-notes/`, `docs/development-notes/`) are on branch `prototype` only (`git show prototype:docs/…`); still accurate for the search pipeline and MCP tool reference, stale where they describe the Node server or the vendored viewer.

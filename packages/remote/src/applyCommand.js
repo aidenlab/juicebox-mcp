@@ -37,8 +37,8 @@ export async function applyCommand(hic, container, command) {
 // Payload shapes are what the server's tool handlers send (packages/server/src/mcp/toolHandlers.js).
 const appliers = {
   [CommandType.LOAD_MAP]: async ({ url, name, normalization, locus, panel }, { hic, container }) => {
-    // Panel 'new' opens another viewer beside the current one, the way juicebox-web's
-    // clone button does, and loads the map there; otherwise the addressed panel's map is
+    // Panel 'new' opens another viewer beside the current one, as a clone-panel
+    // button would, and loads the map there; otherwise the addressed panel's map is
     // replaced (ADR-0007).
     const browser = panel === 'new' ? await openPanel(hic, container, 'new') : resolvePanel(hic, panel, 'load_map');
     await browser.loadHicFile({ url, name, normalization, locus });

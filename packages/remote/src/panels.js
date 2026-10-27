@@ -65,8 +65,8 @@ export function panelAt(hic, position) {
 }
 
 /**
- * Open a panel right of the others, the size of the current one, and select it, the way
- * juicebox-web's clone button does; resolves to its browser, with no map yet. `at` is
+ * Open a panel right of the others, the size of the current one, and select it, as a
+ * clone-panel button would; resolves to its browser, with no map yet. `at` is
  * "new", or a position (a peer's panelOpen), which opens one only when it is one past the
  * last panel, so positions stay aligned (ADR-0008); anywhere else resolves to undefined.
  */

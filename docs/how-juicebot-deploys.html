@@ -598,7 +598,7 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
 <ol>
   <li>Tag both repos with the same <code>prod-</code> name, and push both tags.</li>
   <li>Run <code>scripts/deploy-prod.sh prod-2026-10-11</code>. It refuses a tag that is missing from either repo’s origin.</li>
-  <li>To roll back, run it with the previous tag. Tags up to <code>prod-2026-10-11.1</code> built juicebox-web; roll back to one of those with the script from that tag (<code>git show prod-2026-10-11.1:scripts/deploy-prod.sh</code>) and <code>--repo</code> pointing at a juicebox-web clone.</li>
+  <li>To roll back, run it with the previous tag. Tags up to <code>prod-2026-10-11.1</code> built juicebox-web; roll back to one of those by running the script from a worktree at that tag, with <code>WEB_REPO</code> set to a clone of <code>weiszd/juicebox-web</code> (the only repo that holds those tags).</li>
 </ol>
 
 <p>One tag for both repos keeps the Page and Worker versions matched.</p>

@@ -782,7 +782,7 @@ describe('sync events: several panels', () => {
     const hic = fakeHic({ panels: 2 });
     const { socket } = await joined(hic);
     const added = hic.newBrowser();
-    hic.browsers.push(added); // juicebox-web's clone button: create, then select
+    hic.browsers.push(added); // a host's clone-panel button: create, then select
     hic.setCurrentBrowser(added);
     added.setNormalization('KR');
     expect(syncEventsOf(socket)).toEqual([{ type: 'syncEvent', syncType: 'normalizationChange', panel: 3, normalization: 'KR' }]);

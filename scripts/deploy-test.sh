@@ -11,7 +11,7 @@
 # local branch is used as it is in the clone; a branch only on origin is fetched. The Worker is
 # deployed from juicebox-mcp at [mcp-ref] (default HEAD), also from a worktree, so uncommitted
 # changes never ship. WORKER=0 deploys the Page only. The leading `view` is optional, kept for
-# the commands written when a second (juicebox-web) stack existed.
+# commands written when there were two dev stacks.
 set -euo pipefail
 
 USAGE="usage: scripts/deploy-test.sh [view] <page-repo> [branch-or-tag] [mcp-ref]"

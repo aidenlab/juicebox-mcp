@@ -11,8 +11,7 @@
 # Direct upload, not a git build, so the npm pins in the Page's package.json are what ships.
 # --repo (else PAGE_DIR, else VIEW_REPO, else ../juicebox-view), PROJECT and VITE_WS_URL
 # override the defaults; scripts/deploy-prod.sh uses them to release the production Page.
-# The `view` argument is accepted for the commands written when a second (juicebox-web)
-# stack existed.
+# The `view` argument is accepted for commands written when there were two dev stacks.
 #
 # Vite inlines VITE_* vars at build time and a direct upload never sees the Pages
 # project's variables, so everything the Page needs is passed here.

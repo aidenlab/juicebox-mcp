@@ -110,8 +110,8 @@ event is dropped. ADR-0009.
 **Host requirements:** the remote hears a panel open and close from juicebox.js's global
 `BrowserAdd` and `BrowserDelete` events (juicebox.js 4.12.0; not posted by a restore or a
 reset). Without them panels still open and close locally, but peers are not told. A host that
-creates a panel must also select it (`hic.setCurrentBrowser`), as juicebox-web's clone button
-and juicebox.js's own restore do: the remote scans the panels again on every selection (and
+creates a panel must also select it (`hic.setCurrentBrowser`), as a clone-panel button should
+and juicebox.js's own restore does: the remote scans the panels again on every selection (and
 after each command or catch-up it runs), which is how a restored session's panels, or any panel
 on a juicebox.js without `BrowserAdd`, get followed.
 
