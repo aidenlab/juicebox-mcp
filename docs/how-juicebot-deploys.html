@@ -378,7 +378,7 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
     <text class="t-m t-s" x="196" y="401">juicebot.3dg.io/?room=7KQ2M9XA4T</text>
     <rect class="bx-g" x="44" y="422" width="552" height="160"/>
     <text class="t-h" x="60" y="446">The page</text>
-    <text class="t-s" x="60" y="464">juicebox-web, as built and uploaded</text>
+    <text class="t-s" x="60" y="464">juicebox-view, as built and uploaded</text>
     <rect class="bx" x="60" y="482" width="250" height="84"/>
     <text class="t-h" x="185" y="516" text-anchor="middle" style="font-size:11.5px">juicebox.js</text>
     <text class="t-s" x="185" y="534" text-anchor="middle">the contact-map viewer</text>
@@ -504,7 +504,7 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
 
 <figure>
   <div class="figwrap">
-  <svg class="fig" viewBox="0 0 1000 318" role="img" aria-label="Two lanes, left to right. The Worker: juicebox-mcp at a tag, a clean worktree, npm install, wrangler deploy, then the Worker live on Cloudflare. The Page: juicebox-web at the same tag, a clean worktree, npm ci and vite build into dist, wrangler pages deploy, then a new Pages deployment.">
+  <svg class="fig" viewBox="0 0 1000 318" role="img" aria-label="Two lanes, left to right. The Worker: juicebox-mcp at a tag, a clean worktree, npm install, wrangler deploy, then the Worker live on Cloudflare. The Page: juicebox-view at the same tag, a clean worktree, npm ci and vite build into dist, wrangler pages deploy, then a new Pages deployment.">
     <text class="t-band" x="20" y="22">ON YOUR COMPUTER</text>
     <line class="sep" x1="760" y1="8" x2="760" y2="310"/>
     <text class="t-band" x="778" y="22">ON CLOUDFLARE</text>
@@ -538,7 +538,7 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
 
     <!-- Page lane -->
     <rect class="bx" x="20" y="212" width="140" height="56"/>
-    <text class="t-m" x="90" y="236" text-anchor="middle">juicebox-web</text>
+    <text class="t-m" x="90" y="236" text-anchor="middle">juicebox-view</text>
     <text class="t-s" x="90" y="253" text-anchor="middle">at a tag or branch</text>
     <rect class="bx" x="200" y="212" width="140" height="56"/>
     <text class="t-h" x="270" y="236" text-anchor="middle" style="font-size:11.5px">worktree</text>
@@ -580,27 +580,25 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
   <thead><tr><th>Stack</th><th class="pg">Page</th><th class="wk">Worker</th><th>Deployed by</th></tr></thead>
   <tbody>
     <tr><th>Production</th><td><code>juicebot-web</code><br><code>juicebot.3dg.io</code></td><td><code>--env prod</code>, <code>juicebot-mcp</code><br><code>juicebot-mcp.3dg.io</code></td><td><code>scripts/deploy-prod.sh prod-YYYY-MM-DD</code>, from a tag only. This is the stack the Juicebot plugin uses.</td></tr>
-    <tr><th>Web dev</th><td><code>juicebot-web-dev</code><br><code>juicebot-dev.3dg.io</code></td><td><code>--env dev</code>, <code>juicebot-mcp-dev</code><br><code>juicebot-mcp-dev.3dg.io</code></td><td><code>scripts/deploy-test.sh web &lt;juicebox-web&gt; [ref]</code></td></tr>
-    <tr><th>View dev</th><td><code>juicebot-view-dev</code><br><code>juicebot-view-dev.pages.dev</code></td><td><code>--env view-dev</code>, <code>juicebot-view-mcp-dev</code><br><code>juicebot-view-mcp-dev.3dg.io</code></td><td><code>scripts/deploy-test.sh view &lt;juicebox-view&gt; [ref]</code>. The page is juicebox-view, not juicebox-web.</td></tr>
-    <tr class="past"><th>Demo</th><td><code>juicebox-web-dev</code><br><code>juicebox-v2.3dg.io</code></td><td><code>--env v2</code>, <code>juicebox-mcp-v2</code><br>its <code>workers.dev</code> address</td><td>Frozen at tag <code>demo-2026-10</code>. Not redeployed.</td></tr>
+    <tr><th>Dev</th><td><code>juicebot-view-dev</code><br><code>juicebot-view-dev.pages.dev</code></td><td><code>--env view-dev</code>, <code>juicebot-view-mcp-dev</code><br><code>juicebot-view-mcp-dev.3dg.io</code></td><td><code>scripts/deploy-test.sh &lt;juicebox-view&gt; [ref]</code></td></tr>
   </tbody>
 </table>
 </div>
 
-<aside class="note">Test stacks are shared: a deploy replaces the previous one. To undo, redeploy the earlier branch or tag.</aside>
+<aside class="note">The dev stack is shared: a deploy replaces the previous one. To undo, redeploy the earlier branch or tag.</aside>
 
-<p>Development names end in <code>-dev</code>; production uses the same names without it. The top level of <code>wrangler.toml</code> (outside any <code>[env]</code>) is the old prototype Worker at <code>jbmcp.3dg.io</code>.</p>
+<p>Development names end in <code>-dev</code>. The production Pages project is still called <code>juicebot-web</code>, from before the page moved to juicebox-view; its address did not change. The top level of <code>wrangler.toml</code> (outside any <code>[env]</code>) is only shared settings and the values for <code>wrangler dev</code>; it names no address.</p>
 
-<p><code>3dg.io</code> is a zone on the same Cloudflare account, so Workers and Pages projects can use addresses in it. Every Pages project also has a <code>&lt;project&gt;.pages.dev</code> address; the view stack uses only that.</p>
+<p><code>3dg.io</code> is a zone on the same Cloudflare account, so Workers and Pages projects can use addresses in it. Every Pages project also has a <code>&lt;project&gt;.pages.dev</code> address; the dev stack uses only that.</p>
 
 <h2 id="release">Releasing and rolling back</h2>
 
-<p>Production is deployed only from a tag. The same tag, such as <code>prod-2026-10-11</code>, goes on juicebox-mcp <code>main</code> and juicebox-web <code>master</code>. A second release that day is <code>prod-2026-10-11.1</code>.</p>
+<p>Production is deployed only from a tag. The same tag, such as <code>prod-2026-10-11</code>, goes on juicebox-mcp <code>main</code> and juicebox-view <code>main</code>. A second release that day is <code>prod-2026-10-11.1</code>.</p>
 
 <ol>
   <li>Tag both repos with the same <code>prod-</code> name, and push both tags.</li>
   <li>Run <code>scripts/deploy-prod.sh prod-2026-10-11</code>. It refuses a tag that is missing from either repo’s origin.</li>
-  <li>To roll back, run it with the previous tag.</li>
+  <li>To roll back, run it with the previous tag. Tags up to <code>prod-2026-10-11.1</code> built juicebox-web; roll back to one of those with the script from that tag (<code>git show prod-2026-10-11.1:scripts/deploy-prod.sh</code>) and <code>--repo</code> pointing at a juicebox-web clone.</li>
 </ol>
 
 <p>One tag for both repos keeps the Page and Worker versions matched.</p>

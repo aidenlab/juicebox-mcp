@@ -27,8 +27,7 @@
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
-    "dev:server": "npm run dev --workspace packages/server",
-    "deploy:server": "npm run deploy --workspace packages/server"
+    "dev:server": "npm run dev --workspace packages/server"
   },
   "devDependencies": {
     "jsdom": "^30.1.1",

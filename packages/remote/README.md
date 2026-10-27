@@ -25,7 +25,7 @@ your own namespace import, so the viewer is bundled once. Plain ESM, no build st
   const remote = attachRemote({
     hic,
     container,
-    url: 'wss://jbmcp.3dg.io/ws',
+    url: 'wss://juicebot-mcp.3dg.io/ws',
     room: new URLSearchParams(location.search).get('room') ?? undefined,
     onStatus: (status) => { document.title = `juicebox (${status})` },
     onToolCall: (name) => console.info(`AI ran ${name}`),
@@ -46,7 +46,7 @@ needs its origin added to the server's `ALLOWED_ORIGINS`.
 |---|---|---|
 | `hic` | required | the juicebox.js namespace import |
 | `container` | required | the element passed to `hic.init`; used by `hic.restoreSession` |
-| `url` | required | the server's WebSocket endpoint, e.g. `'wss://jbmcp.3dg.io/ws'` |
+| `url` | required | the server's WebSocket endpoint, e.g. `'wss://juicebot-mcp.3dg.io/ws'` |
 | `room` | optional | the room to join. Omit it and the server mints one, so a page can start a room with no MCP client involved |
 | `onStatus` | optional | `(status) => void`, see below |
 | `onToolCall` | optional | `(name) => void`, called with a tool's name when the room reports that an MCP client ran it, e.g. for a toast |
