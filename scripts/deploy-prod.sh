@@ -48,5 +48,5 @@ echo "juicebox-mcp $(git -C "$WORK/mcp" rev-parse --short HEAD), juicebox-view $
 
 (cd "$WORK/view" && npm ci --no-audit --no-fund --loglevel=error)
 PAGE_DIR="$WORK/view" PROJECT=juicebot-web VITE_WS_URL=wss://juicebot-mcp.3dg.io/ws \
-  "$WORK/mcp/scripts/deploy-web-dev.sh"
+  "$WORK/mcp/scripts/deploy-page.sh"
 echo "released $TAG: https://juicebot.3dg.io/ and https://juicebot-mcp.3dg.io/mcp"

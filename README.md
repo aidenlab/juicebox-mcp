@@ -78,7 +78,7 @@ Every deploy runs from a maintainer's machine with `wrangler`; nothing deploys f
 | Stack | Page | MCP server | Deployed by |
 |---|---|---|---|
 | Production | https://juicebot.3dg.io/ | `https://juicebot-mcp.3dg.io/mcp` | `scripts/deploy-prod.sh prod-YYYY-MM-DD`, from a tag pushed on both this repo and juicebox-view |
-| Dev | https://juicebot-view-dev.pages.dev/ | `https://juicebot-view-mcp-dev.3dg.io/mcp` | `scripts/deploy-test.sh <juicebox-view clone> [branch-or-tag]` ([`docs/test-deployment.md`](docs/test-deployment.md)) |
+| Dev | https://juicebot-view-dev.pages.dev/ | `https://juicebot-view-mcp-dev.3dg.io/mcp` | `scripts/deploy-dev.sh <juicebox-view clone> [branch-or-tag]` ([`docs/test-deployment.md`](docs/test-deployment.md)) |
 
 `scripts/deploy-wizard.sh` walks a maintainer through login, the two secrets, the dev Worker deploy, probing `/mcp` and `/ws`, and connecting each client end to end. How the pieces fit: [`docs/how-juicebot-deploys.html`](docs/how-juicebot-deploys.html).
 

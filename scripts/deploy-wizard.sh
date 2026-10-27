@@ -310,7 +310,7 @@ if [[ "$DEPLOY_ENV" == prod ]]; then
 else
   say "Runs 'wrangler deploy --env $DEPLOY_ENV' in packages/server: Worker $WORKER_NAME on"
   say "${BASE_URL#https://}, whose DNS record wrangler creates. The Page is deployed separately"
-  say "(scripts/deploy-web-dev.sh, or both at once with scripts/deploy-test.sh)."
+  say "(scripts/deploy-page.sh, or both at once with scripts/deploy-dev.sh)."
   if confirm "Deploy now?"; then
     wrangler deploy
   else
