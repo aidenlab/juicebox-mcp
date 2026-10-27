@@ -2,7 +2,7 @@
 
 Issues and specs for this repo live as GitHub issues on `aidenlab/juicebox-mcp`. Use the `gh` CLI (`gh issue create|view|list|edit|comment|close --repo aidenlab/juicebox-mcp`).
 
-Older features still have local markdown under `.scratch/<feature>/` (gitignored). Read them there; file new work on GitHub.
+The Panel controls tickets (#7–#9) were filed on the fork `weiszd/juicebox-mcp` while development lived there; read them there with `--repo weiszd/juicebox-mcp`. File all new work here.
 
 ## Conventions
 
