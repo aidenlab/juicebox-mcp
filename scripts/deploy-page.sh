@@ -5,13 +5,11 @@
 #   juicebox-view (../juicebox-view, or --repo) → Pages "juicebot-view-dev",
 #   https://juicebot-view-dev.pages.dev/, relay wss://juicebot-view-mcp-dev.3dg.io/ws
 #
-#   scripts/deploy-web-dev.sh [view] [--repo <path>]
-#   scripts/deploy-web-dev.sh --repo /path/to/checkout
+#   scripts/deploy-page.sh [--repo <path>]
 #
 # Direct upload, not a git build, so the npm pins in the Page's package.json are what ships.
 # --repo (else PAGE_DIR, else VIEW_REPO, else ../juicebox-view), PROJECT and VITE_WS_URL
 # override the defaults; scripts/deploy-prod.sh uses them to release the production Page.
-# The `view` argument is accepted for commands written when there were two dev stacks.
 #
 # Vite inlines VITE_* vars at build time and a direct upload never sees the Pages
 # project's variables, so everything the Page needs is passed here.
@@ -20,7 +18,7 @@
 # BROWSER_URL points at this Page and ALLOWED_ORIGINS lists it.
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-USAGE="usage: scripts/deploy-web-dev.sh [view] [--repo <path>]"
+USAGE="usage: scripts/deploy-page.sh [--repo <path>]"
 ARGS=()
 while (($#)); do
   case "$1" in
@@ -30,7 +28,7 @@ while (($#)); do
   esac
 done
 set -- "${ARGS[@]+"${ARGS[@]}"}"
-[[ $# -eq 0 || ( $# -eq 1 && "$1" == view ) ]] || { echo "$USAGE" >&2; exit 2; }
+[[ $# -eq 0 ]] || { echo "$USAGE" >&2; exit 2; }
 PAGE_DIR="${PAGE_DIR:-${VIEW_REPO:-$REPO_ROOT/../juicebox-view}}"
 DEFAULT_PROJECT=juicebot-view-dev
 VITE_WS_URL="${VITE_WS_URL:-wss://juicebot-view-mcp-dev.3dg.io/ws}"

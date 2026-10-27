@@ -17,14 +17,14 @@ npx wrangler login
 From this repo, give the path to your juicebox-view project:
 
 ```bash
-scripts/deploy-test.sh <path to juicebox-view>
+scripts/deploy-dev.sh <path to juicebox-view>
 ```
 
 This deploys juicebox-view's `main` branch. To deploy a different branch or a tag, add it at
 the end:
 
 ```bash
-scripts/deploy-test.sh <path to juicebox-view> <branch or tag>
+scripts/deploy-dev.sh <path to juicebox-view> <branch or tag>
 ```
 
 When it finishes it prints the page URL and the MCP URL.
@@ -55,7 +55,7 @@ Someone has to do this once, ever. From `packages/server`:
    ```
    (`--production-branch` is a setting every Cloudflare Pages project needs; this is still the
    dev project.)
-2. Deploy, as in step 2: `scripts/deploy-test.sh <path to juicebox-view>` (from the repo root).
+2. Deploy, as in step 2: `scripts/deploy-dev.sh <path to juicebox-view>` (from the repo root).
 3. Set the MCP server's two secrets (ask a maintainer for the values):
    ```bash
    npx wrangler secret put TINYURL_API_KEY --env view-dev

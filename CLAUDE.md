@@ -28,8 +28,8 @@ npm run test:run -- -t "substring of name"                # one test
 # Server
 npm run dev:server             # wrangler dev on :8787
 (cd packages/server && npx wrangler deploy --env view-dev)   # the dev Worker, juicebot-view-mcp-dev.3dg.io
-scripts/deploy-web-dev.sh      # build ../juicebox-view → Pages juicebot-view-dev, juicebot-view-dev.pages.dev
-scripts/deploy-test.sh <page-repo> [branch-or-tag] [mcp-ref]   # the dev stack from your clone of juicebox-view at a branch or tag (default main) (+ its Worker at mcp-ref, default HEAD; WORKER=0 skips it)
+scripts/deploy-page.sh      # build ../juicebox-view → Pages juicebot-view-dev, juicebot-view-dev.pages.dev
+scripts/deploy-dev.sh <page-repo> [branch-or-tag] [mcp-ref]   # the dev stack from your clone of juicebox-view at a branch or tag (default main) (+ its Worker at mcp-ref, default HEAD; WORKER=0 skips it)
 scripts/deploy-prod.sh prod-YYYY-MM-DD   # Juicebot production from that tag on both repos (Worker juicebot-mcp + Pages juicebot-web)
 scripts/deploy-wizard.sh       # maintainer deploy + onboarding, interactive (login, secrets, clients); DEPLOY_ENV=view-dev (default) or prod
 ```
@@ -89,7 +89,7 @@ A command tool (one that sends one command to the pages) is a row of `COMMAND_TO
 - `CODING_STANDARDS.md` — judgement rules applied at code review (the mechanical ones are the tests and CI).
 - `docs/juicebox-view-development.md` — the juicebox-view iteration loop: local relay + juicebox-view, the round trip, deploying to the dev stack.
 - `docs/local-testing.md` — previewing the join card, the tests, and driving the dev stack with `scripts/dev-check.mjs`.
-- `docs/test-deployment.md` — the dev stack and deploying a tag to it with `scripts/deploy-test.sh`.
+- `docs/test-deployment.md` — the dev stack and deploying a tag to it with `scripts/deploy-dev.sh`.
 - `docs/design/ARCHITECTURE_V2.md` — the accepted design (protocol tables in §5, repo plan in §9).
 - `docs/adr/` — architecture decision records.
 - Prototype-era notes (`docs/mcp-notes/`, `docs/datasource-notes/`, `docs/development-notes/`) are on branch `prototype` only (`git show prototype:docs/…`); still accurate for the search pipeline and MCP tool reference, stale where they describe the Node server or the vendored viewer.

@@ -1,21 +1,19 @@
 #!/usr/bin/env bash
 # Deploy juicebox-view and its Worker to the Juicebot dev stack, for testing before a release
 # (docs/test-deployment.md):
-#   scripts/deploy-test.sh [view] <page-repo> [branch-or-tag] [mcp-ref]
+#   scripts/deploy-dev.sh <page-repo> [branch-or-tag] [mcp-ref]
 #
 #   juicebox-view → Pages juicebot-view-dev (juicebot-view-dev.pages.dev),
 #   Worker juicebot-view-mcp-dev (wrangler --env view-dev, juicebot-view-mcp-dev.3dg.io)
 #
 # <page-repo> is your clone of juicebox-view. It is checked out at [branch-or-tag] (default: its
-# main branch) into a throwaway worktree and uploaded by scripts/deploy-web-dev.sh. A tag or a
+# main branch) into a throwaway worktree and uploaded by scripts/deploy-page.sh. A tag or a
 # local branch is used as it is in the clone; a branch only on origin is fetched. The Worker is
 # deployed from juicebox-mcp at [mcp-ref] (default HEAD), also from a worktree, so uncommitted
-# changes never ship. WORKER=0 deploys the Page only. The leading `view` is optional, kept for
-# commands written when there were two dev stacks.
+# changes never ship. WORKER=0 deploys the Page only.
 set -euo pipefail
 
-USAGE="usage: scripts/deploy-test.sh [view] <page-repo> [branch-or-tag] [mcp-ref]"
-[[ "${1:-}" == view ]] && shift
+USAGE="usage: scripts/deploy-dev.sh <page-repo> [branch-or-tag] [mcp-ref]"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WRANGLER_ENV=view-dev
 PAGE_URL=https://juicebot-view-dev.pages.dev/
@@ -52,5 +50,5 @@ if [[ "$WORKER" != 0 ]]; then
 fi
 
 (cd "$WORK/page" && npm ci --no-audit --no-fund --loglevel=error)
-PAGE_DIR="$WORK/page" "$REPO_ROOT/scripts/deploy-web-dev.sh"
+PAGE_DIR="$WORK/page" "$REPO_ROOT/scripts/deploy-page.sh"
 echo "test deploy at $PAGE_REF: $PAGE_URL and $MCP_URL"

@@ -166,8 +166,8 @@ Deploy from this repo, after `npx wrangler login` once:
 
 ```bash
 cd /Users/turner/AidenLabDevelopment/juicebox-mcp
-scripts/deploy-test.sh /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>
-WORKER=0 scripts/deploy-test.sh /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>   # page only
+scripts/deploy-dev.sh /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>
+WORKER=0 scripts/deploy-dev.sh /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>   # page only
 ```
 
 - **Only committed code ships.** The page is built from `<branch-or-tag>` (default `main`) in a
@@ -182,14 +182,14 @@ WORKER=0 scripts/deploy-test.sh /Users/turner/AidenLabDevelopment/juicebox-view 
 ### What the deploy does
 
 The copy to Cloudflare is a direct upload from your machine. Pushing juicebox-view to GitHub
-deploys nothing; Cloudflare never builds from the repo. `deploy-test.sh` checks out the ref and
-runs `npm ci`, then calls `scripts/deploy-web-dev.sh`, which does two things:
+deploys nothing; Cloudflare never builds from the repo. `deploy-dev.sh` checks out the ref and
+runs `npm ci`, then calls `scripts/deploy-page.sh`, which does two things:
 
 ```bash
-# scripts/deploy-web-dev.sh: build the page for the hosted relay
+# scripts/deploy-page.sh: build the page for the hosted relay
 VITE_WS_URL=wss://juicebot-view-mcp-dev.3dg.io/ws npm run build
 
-# scripts/deploy-web-dev.sh: upload dist/ to the Pages project (the copy to Cloudflare)
+# scripts/deploy-page.sh: upload dist/ to the Pages project (the copy to Cloudflare)
 npx wrangler pages deploy dist --project-name juicebot-view-dev --branch main --commit-dirty=true
 ```
 
@@ -202,7 +202,7 @@ the inner script directly:
 
 ```bash
 cd /Users/turner/AidenLabDevelopment/juicebox-mcp
-scripts/deploy-web-dev.sh --repo /Users/turner/AidenLabDevelopment/juicebox-view
+scripts/deploy-page.sh --repo /Users/turner/AidenLabDevelopment/juicebox-view
 ```
 
 Or by hand, from juicebox-view:
