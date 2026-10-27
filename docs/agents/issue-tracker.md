@@ -1,8 +1,8 @@
 # Issue tracker: GitHub Issues
 
-Issues and specs for this repo live as GitHub issues on `weiszd/juicebox-mcp`. Use the `gh` CLI (`gh issue create|view|list|edit|comment|close --repo weiszd/juicebox-mcp`).
+Issues and specs for this repo live as GitHub issues on `aidenlab/juicebox-mcp`. Use the `gh` CLI (`gh issue create|view|list|edit|comment|close --repo aidenlab/juicebox-mcp`).
 
-Older features still have local markdown under `.scratch/<feature>/` (gitignored). Read them there; file new work on GitHub.
+The Panel controls tickets (#7–#9) were filed on the fork `weiszd/juicebox-mcp` while development lived there; read them there with `--repo weiszd/juicebox-mcp`. File all new work here.
 
 ## Conventions
 
@@ -14,11 +14,11 @@ Older features still have local markdown under `.scratch/<feature>/` (gitignored
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue with `gh issue create --repo weiszd/juicebox-mcp`, with the triage label.
+Create a GitHub issue with `gh issue create --repo aidenlab/juicebox-mcp`, with the triage label.
 
 ## When a skill says "fetch the relevant ticket"
 
-`gh issue view <N> --repo weiszd/juicebox-mcp --comments`. The user will normally pass the issue number or URL.
+`gh issue view <N> --repo aidenlab/juicebox-mcp --comments`. The user will normally pass the issue number or URL.
 
 ## Wayfinding operations
 

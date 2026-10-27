@@ -101,7 +101,7 @@ A command tool (one that sends one command to the pages) is a row of `COMMAND_TO
 
 ### Issue tracker
 
-Issues live as GitHub issues on `weiszd/juicebox-mcp` (use `gh`). Older features still have local markdown under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+Issues live as GitHub issues on `aidenlab/juicebox-mcp` (use `gh`); earlier ones are on the fork `weiszd/juicebox-mcp`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
