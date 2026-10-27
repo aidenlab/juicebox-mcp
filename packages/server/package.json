@@ -6,8 +6,7 @@
   "description": "Juicebox MCP server: Cloudflare Worker (/mcp) plus a Durable Object room per page group (/ws)",
   "license": "MIT",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev": "wrangler dev"
   },
   "dependencies": {
     "@aidenlab/juicebox-remote": "^2.0.1-next.3",

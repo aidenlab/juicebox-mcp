@@ -184,34 +184,36 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Deploys packages/server to jbmcp.3dg.io and walks the maintainer through the
-# steps only a human can do: Cloudflare login, secrets, the juicebox-web Pages
-# variable, and connecting each MCP client end to end. Run from anywhere:
-#   scripts/deploy-wizard.sh
+# Deploys packages/server to the Juicebot dev stack and walks the maintainer through
+# the steps only a human can do: Cloudflare login, secrets, and connecting each MCP
+# client end to end. Run from anywhere:
+#   scripts/deploy-wizard.sh                  # dev stack ([env.view-dev])
+#   DEPLOY_ENV=prod scripts/deploy-wizard.sh  # production: secrets and checks only;
+#                                             # the deploy itself is scripts/deploy-prod.sh
 # Pass/fail answers are collected and written as a markdown checklist to paste
 # into the ticket.
 
-TOTAL_STAGES=12
+TOTAL_STAGES=11
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$REPO_ROOT/packages/server"
-# DEPLOY_ENV=dev deploys the "Juicebot dev" Worker juicebot-mcp-dev at
-# https://juicebot-mcp-dev.3dg.io (wrangler.toml [env.dev]), paired with the page
-# at https://juicebot-dev.3dg.io/. DEPLOY_ENV=v2 is the frozen demo stack
-# (tag demo-2026-10); redeploy it only for a hotfix from that tag.
-DEPLOY_ENV="${DEPLOY_ENV:-}"
+# DEPLOY_ENV=view-dev (the default) is the Worker juicebot-view-mcp-dev at
+# https://juicebot-view-mcp-dev.3dg.io, paired with the juicebox-view Page at
+# https://juicebot-view-dev.pages.dev/. DEPLOY_ENV=prod is production
+# (juicebot-mcp.3dg.io, page juicebot.3dg.io), deployed only from a tag.
+DEPLOY_ENV="${DEPLOY_ENV:-view-dev}"
 case "$DEPLOY_ENV" in
-  "")  WORKER_NAME="juicebox-mcp";     BASE_URL="https://jbmcp.3dg.io";          PAGE_URL="https://aidenlab.org/juicebox/" ;;
-  dev) WORKER_NAME="juicebot-mcp-dev"; BASE_URL="https://juicebot-mcp-dev.3dg.io"; PAGE_URL="https://juicebot-dev.3dg.io/" ;;
-  v2)  WORKER_NAME="juicebox-mcp-v2";  BASE_URL="https://juicebox-mcp-v2.aidenlab.workers.dev"; PAGE_URL="https://juicebox-v2.3dg.io/" ;;
-  *)   WORKER_NAME="juicebox-mcp-$DEPLOY_ENV"; BASE_URL=""; PAGE_URL="http://localhost:5173/" ;;   # learned after deploy
+  view-dev) WORKER_NAME="juicebot-view-mcp-dev"; BASE_URL="https://juicebot-view-mcp-dev.3dg.io"; PAGE_URL="https://juicebot-view-dev.pages.dev/" ;;
+  prod)     WORKER_NAME="juicebot-mcp";          BASE_URL="https://juicebot-mcp.3dg.io";          PAGE_URL="https://juicebot.3dg.io/" ;;
+  *)        printf 'DEPLOY_ENV must be view-dev or prod, not %s\n' "$DEPLOY_ENV" >&2; exit 2 ;;
 esac
+PAGE_ORIGIN="${PAGE_URL%/}"
 MCP_URL="$BASE_URL/mcp"
 WS_URL="wss://${BASE_URL#https://}/ws"
 RESULTS_FILE="${RESULTS_FILE:-${TMPDIR:-/tmp}/juicebox-mcp-deploy-results.md}"
 RESULTS=()
 
-wrangler() { (cd "$SERVER_DIR" && npx wrangler "$@" ${DEPLOY_ENV:+--env "$DEPLOY_ENV"}); }
+wrangler() { (cd "$SERVER_DIR" && npx wrangler "$@" --env "$DEPLOY_ENV"); }
 
 # record "check" asks whether a check passed and keeps the answer for the summary.
 record() {
@@ -231,7 +233,7 @@ secret_is_set() { local out; out=$(wrangler secret list 2>/dev/null || true); [[
 # The end-to-end run every MCP client does (ticket 17).
 drive_map_load() {
   step "In a new chat, ask: \"Give me the Juicebox join link.\" (get_juicebox_url)"
-  step "Open the link ($PAGE_BASE?room=…). The room widget's indicator should reach 'open'."
+  step "Open the link ($PAGE_BASE?room=…). The Room indicator in the header should reach 'open'."
   step "Ask: \"Search 4DN for an HFFc6 in situ Hi-C map and load it.\" (search_map_catalogs → load_map)"
   step "Ask: \"Go to chr8:127,000,000-130,000,000.\" (goto_locus). A toast names each tool."
 }
@@ -241,17 +243,13 @@ banner "juicebox-mcp: deploy and onboard"
 # ──────────────────────────────────────────────────────────────────────────
 stage "Before you start"
 say "This deploys the Worker '$WORKER_NAME' from $SERVER_DIR"
-say "to ${BASE_URL:-its *.workers.dev address}, then checks each MCP client against it."
+say "to $BASE_URL ([env.$DEPLOY_ENV]), then checks each MCP client against it."
 note "Needs: npm install done at the repo root; curl; a Cloudflare account that owns"
-note "the 3dg.io zone and the juicebox-web Pages project; the TinyURL account behind t.3dg.io."
+note "the 3dg.io zone and the Juicebot Pages projects; the TinyURL account behind t.3dg.io."
 printf '\n'
-if [[ -n "$DEPLOY_ENV" ]]; then
-  note "Side-by-side trial (DEPLOY_ENV=$DEPLOY_ENV): the prototype Worker and jbmcp.3dg.io are not touched."
-else
-  warn "The Worker name is the prototype's: deploying replaces the running prototype."
-  warn "wrangler.toml sets workers_dev = false: the *.workers.dev URL stops answering,"
-  warn "so any client still pointed there must move to $MCP_URL."
-  note "For the Juicebot dev stack instead, re-run with DEPLOY_ENV=dev."
+if [[ "$DEPLOY_ENV" == prod ]]; then
+  warn "Production: this wizard sets secrets and checks clients but does not deploy;"
+  warn "production is deployed only from a tag by scripts/deploy-prod.sh."
 fi
 confirm "Go ahead on those terms?" || { say "Stopped. Nothing changed."; exit 0; }
 
@@ -286,14 +284,14 @@ pause
 
 # ──────────────────────────────────────────────────────────────────────────
 stage "Secret: TINYURL_API_KEY"
-say "create_shareable_url shortens snapshot links on t.3dg.io, the account juicebox-web uses"
-say "(its VITE_TINYURL_JUICEBOX_API_KEY). Unset → links come back unshortened."
+say "create_shareable_url shortens snapshot links on the t.3dg.io branded domain."
+say "Unset → links come back unshortened."
 if secret_is_set TINYURL_API_KEY && ! confirm "Already set. Replace it?"; then
   note "Kept the existing key."
 else
   open_url "https://tinyurl.com/app/dev"
   step "Sign in to the TinyURL account that owns the t.3dg.io branded domain."
-  step "Create an API token (or reuse juicebox-web's) that may create TinyURLs."
+  step "Create an API token (or reuse an existing one) that may create TinyURLs."
   ask_secret TINYURL_API_KEY "Paste the API token (empty skips):"
   if [[ -n "$TINYURL_API_KEY" ]]; then
     printf '%s' "$TINYURL_API_KEY" | wrangler secret put TINYURL_API_KEY
@@ -305,27 +303,21 @@ pause
 
 # ──────────────────────────────────────────────────────────────────────────
 stage "Deploy the Worker"
-if [[ -n "$DEPLOY_ENV" ]]; then
-  say "Runs 'wrangler deploy --env $DEPLOY_ENV' in packages/server: Worker $WORKER_NAME on its"
-  say "*.workers.dev address. No custom domain is touched."
-  warn "If wrangler asks to move jbmcp.3dg.io to this Worker, answer N: that would take the"
-  warn "domain off the prototype. (wrangler.toml's [env.$DEPLOY_ENV] sets routes = [] to prevent it.)"
+if [[ "$DEPLOY_ENV" == prod ]]; then
+  say "Production is deployed from a release tag, not from here:"
+  step "scripts/deploy-prod.sh prod-YYYY-MM-DD"
+  pause "Press Enter once production is deployed (or already was)"
 else
-  say "Runs 'wrangler deploy' in packages/server. The custom domain jbmcp.3dg.io is attached"
-  say "by wrangler, which creates its DNS record."
-  note "If it fails because jbmcp.3dg.io already has a DNS record (the prototype's), delete that"
-  note "record under dash.cloudflare.com → 3dg.io → DNS → Records, then re-run this wizard."
-fi
-if confirm "Deploy now?"; then
-  wrangler deploy
-  if [[ -n "$DEPLOY_ENV" ]]; then
-    ask BASE_URL "Base URL wrangler printed (https://juicebox-mcp-$DEPLOY_ENV.<account>.workers.dev)"
-    BASE_URL="${BASE_URL%/}"; MCP_URL="$BASE_URL/mcp"; WS_URL="wss://${BASE_URL#https://}/ws"
+  say "Runs 'wrangler deploy --env $DEPLOY_ENV' in packages/server: Worker $WORKER_NAME on"
+  say "${BASE_URL#https://}, whose DNS record wrangler creates. The Page is deployed separately"
+  say "(scripts/deploy-web-dev.sh, or both at once with scripts/deploy-test.sh)."
+  if confirm "Deploy now?"; then
+    wrangler deploy
+  else
+    say "Stopped before deploying."; exit 0
   fi
-else
-  say "Stopped before deploying."; exit 0
+  pause
 fi
-pause
 
 # ──────────────────────────────────────────────────────────────────────────
 stage "Check the deployed server"
@@ -346,41 +338,22 @@ ws() { curl -s -o /dev/null -w '%{http_code}' --http1.1 --max-time 5 \
   -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H "Origin: $1" "$BASE_URL/ws" || true; }
 code=$(ws https://example.com)
 [[ "$code" == 403 ]] && auto "/ws refuses an unlisted Origin (403)" ok || auto "/ws refuses an unlisted Origin (403)" "got $code"
-code=$(ws https://aidenlab.org)
-[[ "$code" == 101* ]] && auto "/ws accepts https://aidenlab.org (101)" ok || auto "/ws accepts https://aidenlab.org (101)" "got $code"
+code=$(ws "$PAGE_ORIGIN")
+[[ "$code" == 101* ]] && auto "/ws accepts $PAGE_ORIGIN (101)" ok || auto "/ws accepts $PAGE_ORIGIN (101)" "got $code"
 pause
 
 # ──────────────────────────────────────────────────────────────────────────
-stage "juicebox-web: VITE_WS_URL on Cloudflare Pages"
-say "juicebox-web renders the room widget only when built with VITE_WS_URL."
-open_url "https://dash.cloudflare.com/?to=/:account/workers-and-pages"
-step "Workers & Pages → juicebox-web → Settings → Variables and Secrets."
-step "Production: add a plain-text variable VITE_WS_URL = $WS_URL"
-step "Preview: add the same variable with the same value."
-step "Deployments → latest production deployment → ⋯ → Retry deployment (vars apply at build)."
-note "Preview builds are served from <hash>.juicebox-web.pages.dev, which is not on"
-note "ALLOWED_ORIGINS (exact match): the widget renders there but /ws answers 403."
-note "The widget ships once juicebox-web's ticket 16 PR lands on the branch Pages builds."
-record "Pages env has VITE_WS_URL for production and preview"
-
-# ──────────────────────────────────────────────────────────────────────────
 stage "A page to drive"
-if [[ -n "$DEPLOY_ENV" ]]; then
-  say "Join links from $WORKER_NAME open $PAGE_URL (BROWSER_URL in [env.$DEPLOY_ENV]);"
-  say "nothing is deployed to the production site. Run a local juicebox-web with the widget:"
-  step "cd ../juicebox-web (the weiszd fork, master carries the room widget)"
-  step "VITE_WS_URL=$WS_URL npm run dev   # vite on http://localhost:5173"
-  PAGE_BASE="$PAGE_URL"
-  pause "Press Enter once http://localhost:5173/ loads and shows the room item next to Share"
-elif open_url "$PAGE_URL"; say "Join links open $PAGE_URL. Is the room widget live there yet?"; \
-     step "Look for the room item next to Share in the navbar."; confirm "Is the widget there?"; then
+open_url "$PAGE_URL"
+say "Join links open $PAGE_URL (BROWSER_URL in [env.$DEPLOY_ENV])."
+if confirm "Does it load, with the Room indicator in its header?"; then
   PAGE_BASE="$PAGE_URL"
 else
-  say "Then drive a local juicebox-web against the deployed server instead:"
-  step "cd ../juicebox-web (a checkout with the widget, e.g. branch ticket/16)"
+  say "Then drive a local juicebox-view against the deployed server instead:"
+  step "cd ../juicebox-view"
   step "VITE_WS_URL=$WS_URL npm run dev   # vite on http://localhost:5173"
-  note "http://localhost:5173 is on ALLOWED_ORIGINS. In each join link below, replace"
-  note "$PAGE_URL with http://localhost:5173/ and keep ?room=…"
+  note "http://localhost:5173 is on [env.view-dev]'s ALLOWED_ORIGINS, not production's. In each"
+  note "join link below, replace $PAGE_URL with http://localhost:5173/ and keep ?room=…"
   PAGE_BASE="http://localhost:5173/"
   pause "Press Enter once http://localhost:5173/ loads"
 fi
@@ -418,12 +391,12 @@ record "mcp-remote: get_juicebox_url → open page → load_map → goto_locus"
 # ──────────────────────────────────────────────────────────────────────────
 stage "Two pages, one room (design §10 step 4)"
 say "On $PAGE_BASE, with the room from the last stage still open in tab A:"
-step "Copy the join link from the widget, open it in tab B; B should show A's map."
+step "Copy the join link from the header, open it in tab B; B should show A's map."
 step "In A, change the locus, normalization, colour scale and add a track; B follows."
 record "Two tabs on one room stay in sync"
 step "Close both tabs, then open the join link again in a fresh tab C."
 record "A late joiner receives the room's saved session"
-step "In A (or C): Share → copy the snapshot link; open it in a private window."
+step "In chat: \"Give me a shareable link\" (create_shareable_url); open it in a private window."
 record "The snapshot link restores the view"
 
 finish
@@ -432,6 +405,6 @@ finish
   printf '%s\n' "${RESULTS[@]}"
   (( ${#SKIPPED[@]} )) && printf '\nStill to do: %s\n' "${SKIPPED[*]}"
 } > "$RESULTS_FILE"
-say "Results, ready to paste into .scratch/v2/issues/17-*.md under Comments:"
+say "Results, ready to paste into the deploy issue:"
 note "$RESULTS_FILE"
 printf '\n'; sed 's/^/    /' "$RESULTS_FILE"; printf '\n'

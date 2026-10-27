@@ -7,7 +7,7 @@
  *   GET  /mcp             - 405 (SSE not supported; JSON responses only)
  *   DELETE /mcp           - MCP protocol (session termination)
  *   OPTIONS /mcp          - CORS preflight
- *   GET  /*               - 404 (the viewer is hosted by juicebox-web, not this Worker)
+ *   GET  /*               - 404 (the viewer is hosted by the Page, juicebox-view, not this Worker)
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -109,7 +109,7 @@ export default {
       return corsResponse(await handleMcpRequest(request, env));
     }
 
-    // The viewer is hosted by juicebox-web, not this Worker.
+    // The viewer is hosted by the Page (juicebox-view), not this Worker.
     return new Response('Not Found', { status: 404 });
   }
 };
@@ -137,7 +137,7 @@ async function handleMcpRequest(request, env) {
       // SERVER_NAME tells side-by-side stacks apart in a host's connector list ([env.view-dev]).
       name: env.SERVER_NAME || 'juicebox-server',
       version: '1.1.0',
-      // The juicebox-web favicon; hosts that render serverInfo icons show it beside the connector.
+      // The aidenlab.org favicon; hosts that render serverInfo icons show it beside the connector.
       icons: [{ src: 'https://aidenlab.org/favicon.ico', mimeType: 'image/x-icon', sizes: ['16x16'] }]
     });
 

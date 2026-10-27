@@ -1,7 +1,6 @@
 # Developing juicebox-view against the MCP server
 
-juicebox-view is the page that will replace juicebox-web (which is frozen). This is the
-iteration loop for it: run it and this repo's MCP server on your machine, drive it from
+juicebox-view is the page join links open (ADR-0010). This is the iteration loop for it: run it and this repo's MCP server on your machine, drive it from
 Claude, and when a version is worth sharing, deploy it to the hosted view dev stack.
 
 The MCP server is never re-pointed between iterations. It knows the page through two settings
@@ -32,7 +31,7 @@ relay and can never join a room on your local one, and the other way round.
 
 ```bash
 # Relay
-cd /Users/turner/JuiceboxDevelopment/weiszd/juicebox-mcp
+cd /Users/turner/AidenLabDevelopment/juicebox-mcp
 npm install
 cp packages/server/.dev.vars.example packages/server/.dev.vars
 
@@ -52,7 +51,7 @@ local page.
 **Terminal 1: relay**
 
 ```bash
-cd /Users/turner/JuiceboxDevelopment/weiszd/juicebox-mcp
+cd /Users/turner/AidenLabDevelopment/juicebox-mcp
 npm run dev:server
 ```
 
@@ -166,9 +165,9 @@ Add the connector once in Claude (Settings → Connectors). It stays the same ac
 Deploy from this repo, after `npx wrangler login` once:
 
 ```bash
-cd /Users/turner/JuiceboxDevelopment/weiszd/juicebox-mcp
-scripts/deploy-test.sh view /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>
-WORKER=0 scripts/deploy-test.sh view /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>   # page only
+cd /Users/turner/AidenLabDevelopment/juicebox-mcp
+scripts/deploy-test.sh /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>
+WORKER=0 scripts/deploy-test.sh /Users/turner/AidenLabDevelopment/juicebox-view <branch-or-tag>   # page only
 ```
 
 - **Only committed code ships.** The page is built from `<branch-or-tag>` (default `main`) in a
@@ -179,13 +178,12 @@ WORKER=0 scripts/deploy-test.sh view /Users/turner/AidenLabDevelopment/juicebox-
   assets do not contain it.
 - The stack is shared: your deploy replaces the previous one. Tell anyone testing it first. To
   undo, deploy the branch or tag that was there before.
-- It never touches the web stack (`juicebot-dev.3dg.io`).
 
 ### What the deploy does
 
 The copy to Cloudflare is a direct upload from your machine. Pushing juicebox-view to GitHub
 deploys nothing; Cloudflare never builds from the repo. `deploy-test.sh` checks out the ref and
-runs `npm ci`, then calls `scripts/deploy-web-dev.sh view`, which does two things:
+runs `npm ci`, then calls `scripts/deploy-web-dev.sh`, which does two things:
 
 ```bash
 # scripts/deploy-web-dev.sh: build the page for the hosted relay
@@ -203,8 +201,8 @@ To deploy your working copy as it is, uncommitted changes included, and the page
 the inner script directly:
 
 ```bash
-cd /Users/turner/JuiceboxDevelopment/weiszd/juicebox-mcp
-scripts/deploy-web-dev.sh view --repo /Users/turner/AidenLabDevelopment/juicebox-view
+cd /Users/turner/AidenLabDevelopment/juicebox-mcp
+scripts/deploy-web-dev.sh --repo /Users/turner/AidenLabDevelopment/juicebox-view
 ```
 
 Or by hand, from juicebox-view:
@@ -223,5 +221,4 @@ the built page has no relay address and never joins a room. The account id is th
 A deployed page has no juicebox.js dev proxy, so a contact map on a host that refuses a browser
 (ENCODE among them) can load in `npm run dev` and fail on the hosted page.
 
-More on both dev stacks, and creating the view stack if it ever has to be rebuilt:
-`docs/test-deployment.md`.
+More on the dev stack, and creating it if it ever has to be rebuilt: `docs/test-deployment.md`.

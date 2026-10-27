@@ -6,13 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 # reaches more than one, and wrangler will not choose in a script. Every [env.*] inherits it.
 account_id = "1eadb18bb8557fd1bd06b1d0310a902e"
 
-# MCP (/mcp) and page WebSockets (/ws) are served on this custom domain (design §6.4).
-routes = [
-  { pattern = "jbmcp.3dg.io", custom_domain = true },
-]
-# No *.workers.dev hostname and no preview URLs: jbmcp.3dg.io is the one public
-# address MCP clients and pages are given, so there is no second entry point to
-# keep in sync or to leave behind when the domain moves.
+# The top level holds what every [env.*] shares and the vars `wrangler dev` and the tests read.
+# It names no route, so a bare `wrangler deploy` reaches no address; deploy with --env.
 workers_dev = false
 preview_urls = false
 
@@ -48,21 +43,13 @@ tag = "v2"
 new_classes = ["McpSession"]
 
 [vars]
-# juicebox-web, the page join links and snapshot links open (not this Worker).
-# The trailing slash matters: the app is served under /juicebox/ with relative assets.
-# For `wrangler dev`, override it in .dev.vars (see .dev.vars.example).
-BROWSER_URL = "https://aidenlab.org/juicebox/"
+# The page join links and snapshot links open (not this Worker): a local juicebox-view.
+# For a deployed stack this is its Page; see [env.*] below.
+BROWSER_URL = "http://localhost:5173/"
 TINYURL_DOMAIN = "t.3dg.io"
 TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
 # Pages that may open /ws (exact Origin match). WebSockets are not covered by CORS.
 ALLOWED_ORIGINS = [
-  "https://aidenlab.org",
-  "http://www.aidenlab.org",
-  "https://www.aidenlab.org",
-  "https://juicebox.aidenlab.org",
-  "https://3dg.io",
-  "https://www.3dg.io",
-  "https://juicebox-web.pages.dev",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]
@@ -71,92 +58,15 @@ ALLOWED_ORIGINS = [
 # TINYURL_API_KEY      - TinyURL API token for create_shareable_url; unset → links are not shortened
 # SESSION_HMAC_SECRET  - HMAC key deriving room ids from x-openai-session; unset → those requests fail
 
-# ── Frozen demo deployment (do not redeploy) ─────────────────────────────────
-# `wrangler deploy --env v2` published this code as the Worker "juicebox-mcp-v2"
-# on its *.workers.dev address, paired with the Pages project juicebox-web-dev at
-# https://juicebox-v2.3dg.io/. That stack is frozen at tag demo-2026-10 (here and
-# in weiszd/juicebox-web) for demos; users of its connector keep working while
-# development continues on [env.dev] below. A demo hotfix = check out the tag,
-# deploy --env v2 once, go back. Named environments inherit the top-level
-# `routes` (so `routes = []` keeps jbmcp.3dg.io on the prototype Worker) but not
-# `vars` or `durable_objects`, so those are repeated; migrations are top-level
-# and apply to every environment. Secrets are per environment:
-# `wrangler secret put <NAME> --env <env>`.
-[env.v2]
-name = "juicebox-mcp-v2"
-routes = []
-workers_dev = true
-preview_urls = false
-
-[[env.v2.durable_objects.bindings]]
-name = "WEBSOCKET_ROOM"
-class_name = "WebSocketRoom"
-
-[[env.v2.durable_objects.bindings]]
-name = "MCP_SESSION"
-class_name = "McpSession"
-
-[env.v2.vars]
-# juicebox-web fork master at tag demo-2026-10, Pages project juicebox-web-dev.
-BROWSER_URL = "https://juicebox-v2.3dg.io/"
-TINYURL_DOMAIN = "t.3dg.io"
-TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
-ALLOWED_ORIGINS = [
-  "https://aidenlab.org",
-  "http://www.aidenlab.org",
-  "https://www.aidenlab.org",
-  "https://juicebox.aidenlab.org",
-  "https://3dg.io",
-  "https://www.3dg.io",
-  "https://juicebox-web.pages.dev",
-  "https://juicebox-v2.3dg.io",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-]
-
-# ── Development deployment: "Juicebot dev" ───────────────────────────────────
-# Juicebot is the name of the AI-enabled juicebox; the dev stack carries a -dev
-# suffix everywhere so the production release only adds the un-suffixed names:
-# Worker juicebot-mcp-dev at https://juicebot-mcp-dev.3dg.io (MCP clients use
-# /mcp, pages /ws), paired with the Pages project juicebot-web-dev at
-# https://juicebot-dev.3dg.io/ (scripts/deploy-web-dev.sh). Wrangler creates the
-# DNS record for the custom domain; the zone is on this account.
-# `wrangler deploy --env dev`; secrets with `wrangler secret put <NAME> --env dev`.
-[env.dev]
-name = "juicebot-mcp-dev"
-routes = [
-  { pattern = "juicebot-mcp-dev.3dg.io", custom_domain = true },
-]
-workers_dev = false
-preview_urls = false
-
-[[env.dev.durable_objects.bindings]]
-name = "WEBSOCKET_ROOM"
-class_name = "WebSocketRoom"
-
-[[env.dev.durable_objects.bindings]]
-name = "MCP_SESSION"
-class_name = "McpSession"
-
-[env.dev.vars]
-# For a local juicebox-web dev server instead, override in .dev.vars or use
-# http://localhost:5173/.
-BROWSER_URL = "https://juicebot-dev.3dg.io/"
-TINYURL_DOMAIN = "t.3dg.io"
-TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
-ALLOWED_ORIGINS = [
-  "https://juicebot-dev.3dg.io",
-  "https://juicebot-web-dev.pages.dev",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-]
+# Named environments inherit account_id and the top-level settings above but not `vars` or
+# `durable_objects`, so those are repeated; migrations are top-level and apply to every
+# environment. Secrets are per environment: `wrangler secret put <NAME> --env <env>`.
 
 # ── Development deployment: "Juicebot view dev" ──────────────────────────────
-# The contender stack, side by side with [env.dev] while juicebox-view is compared with
-# juicebox-web (docs/test-deployment.md): Worker juicebot-view-mcp-dev at
+# The dev stack (docs/test-deployment.md): Worker juicebot-view-mcp-dev at
 # https://juicebot-view-mcp-dev.3dg.io, paired with the Pages project juicebot-view-dev at
 # https://juicebot-view-dev.pages.dev/ (aidenlab/juicebox-view). It shares nothing with
-# [env.dev]: its own Rooms, sessions and secrets, and only its own Page is allowed.
+# production: its own Rooms, sessions and secrets, and only its own Page is allowed.
 # `scripts/deploy-test.sh view <path to juicebox-view> [branch-or-tag]`; secrets with `wrangler secret put <NAME> --env view-dev`.
 [env.view-dev]
 name = "juicebot-view-mcp-dev"
@@ -175,7 +85,7 @@ name = "MCP_SESSION"
 class_name = "McpSession"
 
 [env.view-dev.vars]
-# The MCP serverInfo name, so this stack's connector is told apart from [env.dev]'s.
+# The MCP serverInfo name, so this stack's connector is told apart from production's.
 SERVER_NAME = "juicebot-view-server"
 # For a local juicebox-view dev server instead, override in .dev.vars or use
 # http://localhost:5173/.
@@ -188,8 +98,8 @@ ALLOWED_ORIGINS = [
   "http://127.0.0.1:5173",
 ]
 
-# Juicebot production: Worker `juicebot-mcp` on juicebot-mcp.3dg.io, page Pages `juicebot-web` on
-# juicebot.3dg.io. Deployed only from a release tag by scripts/deploy-prod.sh, never by hand:
+# Juicebot production: Worker `juicebot-mcp` on juicebot-mcp.3dg.io, page juicebox-view on
+# juicebot.3dg.io (Pages project `juicebot-web`, named before the page moved to juicebox-view). Deployed only from a release tag by scripts/deploy-prod.sh, never by hand:
 # `scripts/deploy-prod.sh prod-YYYY-MM-DD`. Secrets: `wrangler secret put <NAME> --env prod`.
 [env.prod]
 name = "juicebot-mcp"

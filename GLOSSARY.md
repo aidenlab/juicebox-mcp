@@ -65,7 +65,7 @@ juicebox.js's navbar: the bar above each panel's map with its map name, locus bo
 _Avoid_: navbar (juicebox.js's own name), toolbar, controls (alone)
 
 **Host**:
-The shell or site that embeds juicebox.js and attaches a remote: juicebox-web, embed.html, any third-party site.
+The shell or site that embeds juicebox.js and attaches a remote: juicebox-view, embed.html, any third-party site.
 _Avoid_: frontend, app
 
 **Remote**:

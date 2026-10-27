@@ -28,7 +28,7 @@ export const Status = Object.freeze({
  * @param {object} opts
  * @param {object} opts.hic                 the juicebox.js namespace import
  * @param {Element} opts.container          element passed to hic.init; only ever passed through
- * @param {string} opts.url                 WebSocket endpoint, e.g. 'wss://jbmcp.3dg.io/ws'
+ * @param {string} opts.url                 WebSocket endpoint, e.g. 'wss://juicebot-mcp.3dg.io/ws'
  * @param {string} [opts.room]              room to join; omit to have the server mint one
  * @param {(status: string) => void} [opts.onStatus]    'connecting' | 'open' | 'closed' | 'expired'
  * @param {(name: string) => void} [opts.onToolCall]

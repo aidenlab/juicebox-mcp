@@ -198,7 +198,7 @@ td.n { font-weight: 600; color: var(--muted); width: 1.5rem; }
 
     <rect class="bx" x="640" y="226" width="200" height="74"/>
     <text class="t-h" x="740" y="258" text-anchor="middle">Juicebox web server</text>
-    <text class="t-s t-m" x="740" y="278" text-anchor="middle">juicebot-dev.3dg.io</text>
+    <text class="t-s t-m" x="740" y="278" text-anchor="middle">juicebot.3dg.io</text>
 
     <line class="ln" x1="220" y1="80" x2="329" y2="80" marker-end="url(#f1a)"/>
     <text x="275" y="73" text-anchor="middle">tool calls</text>
@@ -229,7 +229,7 @@ td.n { font-weight: 600; color: var(--muted); width: 1.5rem; }
 </table>
 </div>
 
-<aside class="note">The MCP server is a Cloudflare Worker. The Juicebox web server is a Cloudflare Pages site built from juicebox-web. They are deployed separately.</aside>
+<aside class="note">The MCP server is a Cloudflare Worker. The Juicebox web server is a Cloudflare Pages site built from juicebox-view. They are deployed separately.</aside>
 
 <p>MCP, the Model Context Protocol, is a standard that lets Claude call functions offered by an outside server. Each function is called a tool. A <em>connector</em> is Claude&rsquo;s name for an MCP server that a user has added to Claude.</p>
 
@@ -342,7 +342,7 @@ td.n { font-weight: 600; color: var(--muted); width: 1.5rem; }
 <table>
   <thead><tr><th></th><th>The user</th><th>What happens</th></tr></thead>
   <tbody>
-    <tr><td class="n">1</td><td>Asks Claude to open Juicebox.</td><td>Claude calls the tool <code>get_juicebox_url</code>. The MCP server replies with a <em>join link</em>: the address of the Juicebox page with a room id attached, such as <code>https://juicebot-dev.3dg.io/?room=7KQ2M9XA4T</code>. Claude shows a card.</td></tr>
+    <tr><td class="n">1</td><td>Asks Claude to open Juicebox.</td><td>Claude calls the tool <code>get_juicebox_url</code>. The MCP server replies with a <em>join link</em>: the address of the Juicebox page with a room id attached, such as <code>https://juicebot.3dg.io/?room=7KQ2M9XA4T</code>. Claude shows a card.</td></tr>
     <tr><td class="n">2</td><td>In Claude Desktop, nothing; may be asked to allow the site. On the web, presses Open Juicebox.</td><td>The join link is opened, in the panel by Claude or in a browser window by the button.</td></tr>
     <tr><td class="n">3</td><td>Sees the Juicebox page appear.</td><td>The browser fetches the page&rsquo;s files from the Juicebox web server.</td></tr>
     <tr><td class="n">4</td><td>Nothing.</td><td>The page reads the room id from its own address, opens a connection to the MCP server and joins that room. The connection stays open.</td></tr>
@@ -413,13 +413,13 @@ td.n { font-weight: 600; color: var(--muted); width: 1.5rem; }
     <tr><td>MCP server: rooms</td><td><code>packages/server/src/durableObjects/WebSocketRoom.js</code></td></tr>
     <tr><td>MCP server: settings</td><td><code>packages/server/wrangler.toml</code></td></tr>
     <tr><td>Remote</td><td><code>packages/remote/src/</code></td></tr>
-    <tr><td>Juicebox page and web server</td><td>juicebox-web, a separate repository</td></tr>
+    <tr><td>Juicebox page and web server</td><td>juicebox-view, a separate repository</td></tr>
     <tr><td>Viewer</td><td>juicebox.js, a separate repository</td></tr>
   </tbody>
 </table>
 </div>
 
-<p class="end">The full design is <code>docs/design/ARCHITECTURE_V2.md</code>. Running all four parts on one machine is described in <code>docs/local-testing.md</code>.</p>
+<p class="end">The full design is <code>docs/design/ARCHITECTURE_V2.md</code>. Running all four parts on one machine is described in <code>docs/juicebox-view-development.md</code>.</p>
 
 </main>
 </body>

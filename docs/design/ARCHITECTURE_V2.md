@@ -6,6 +6,11 @@ Status: **accepted**, 2026‑09‑28 (proposed 2026‑09‑27). Supersedes §6 o
 the hard‑to‑reverse ones are recorded in `docs/adr/`, the vocabulary in
 `GLOSSARY.md`. §11 lists the answers to the open questions.
 
+Amended 2026‑10‑27 by ADR-0010: the host is juicebox-view, not juicebox-web.
+D1, the shell parts of the §3 diagram, §8 and the `jbmcp.3dg.io` deployment
+describe the design as accepted and are kept as the record; the deployed
+stacks are in `CLAUDE.md` and `docs/how-juicebot-deploys.html`.
+
 ## 1. Goal
 
 Let an MCP client (Claude Desktop, Claude Code, ChatGPT, Cursor, …) drive a
