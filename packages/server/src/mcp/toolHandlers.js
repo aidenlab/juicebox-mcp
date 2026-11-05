@@ -382,7 +382,6 @@ const COMMAND_TOOLS = [
  *   send(tool, command), request(command), isConnected(), current(), bind(room)
  * @param {string} deps.sessionId - current MCP session ID
  * @param {string} deps.browserUrl - configured frontend URL
- * @param {function} deps.shortenURL - (url) => Promise<string>
  * @param {object} deps.log - { logInfo, logWarn, logError }
  */
 export function registerTools(mcpServer, deps) {
@@ -390,7 +389,6 @@ export function registerTools(mcpServer, deps) {
     room,
     sessionId,
     browserUrl,
-    shortenURL,
     log
   } = deps;
 
@@ -520,20 +518,13 @@ export function registerTools(mcpServer, deps) {
       if (error) return error;
       // The snapshot link (design §7): compressedSession() is `session=blob:…`.
       const baseUrl = browserUrl.split('?')[0].split('#')[0];
+      // Not shortened: TinyURL is off until its replacement is decided (aidenlab/juicebox-mcp#27).
       const shareableUrl = `${baseUrl}?${compressedSessionString}`;
-
-      let shortenedUrl;
-      try {
-        shortenedUrl = await shortenURL(shareableUrl);
-      } catch (error) {
-        log.logWarn('Failed to shorten URL:', error.message);
-        shortenedUrl = shareableUrl;
-      }
 
       return {
         content: [{
           type: 'text',
-          text: `Shareable URL for this session:\n\n${shortenedUrl}\n\nCopy and paste this URL to share the current Juicebox session.`
+          text: `Shareable URL for this session:\n\n${shareableUrl}\n\nCopy and paste this URL to share the current Juicebox session.`
         }]
       };
     }

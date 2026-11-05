@@ -46,8 +46,6 @@ new_classes = ["McpSession"]
 # The page join links and snapshot links open (not this Worker): a local juicebox-view.
 # For a deployed stack this is its Page; see [env.*] below.
 BROWSER_URL = "http://localhost:5173/"
-TINYURL_DOMAIN = "t.3dg.io"
-TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
 # Pages that may open /ws (exact Origin match). WebSockets are not covered by CORS.
 ALLOWED_ORIGINS = [
   "http://localhost:5173",
@@ -55,7 +53,6 @@ ALLOWED_ORIGINS = [
 ]
 
 # Secrets (set via `wrangler secret put`, see scripts/deploy-wizard.sh; for `wrangler dev`, in .dev.vars):
-# TINYURL_API_KEY      - TinyURL API token for create_shareable_url; unset → links are not shortened
 # SESSION_HMAC_SECRET  - HMAC key deriving room ids from x-openai-session; unset → those requests fail
 
 # Named environments inherit account_id and the top-level settings above but not `vars` or
@@ -90,8 +87,6 @@ SERVER_NAME = "juicebox-view-server"
 # For a local juicebox-view dev server instead, override in .dev.vars or use
 # http://localhost:5173/.
 BROWSER_URL = "https://juicebox-view-dev.pages.dev/"
-TINYURL_DOMAIN = "t.3dg.io"
-TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
 ALLOWED_ORIGINS = [
   "https://juicebox-view-dev.pages.dev",
   "http://localhost:5173",
@@ -124,8 +119,6 @@ class_name = "McpSession"
 # As [env.view-dev]: told apart from Juicebot production's connector; from dev by its version.
 SERVER_NAME = "juicebox-view-server"
 BROWSER_URL = "https://juicebox-view.pages.dev/"
-TINYURL_DOMAIN = "t.3dg.io"
-TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
 ALLOWED_ORIGINS = [
   "https://juicebox-view.pages.dev",
 ]
@@ -151,8 +144,6 @@ class_name = "McpSession"
 
 [env.prod.vars]
 BROWSER_URL = "https://juicebot.3dg.io/"
-TINYURL_DOMAIN = "t.3dg.io"
-TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
 ALLOWED_ORIGINS = [
   "https://juicebot.3dg.io",
   "https://juicebot-web.pages.dev",

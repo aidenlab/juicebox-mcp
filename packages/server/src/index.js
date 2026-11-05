@@ -15,7 +15,6 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { registerTools } from './mcp/toolHandlers.js';
 import { roomForSession } from './room.js';
 import { ROOM_ID, roomIdFromBytes, mintRoomId } from './roomId.js';
-import { tinyURLShortener } from './urlShortener.js';
 import { logInfo, logWarn, logError } from './lib/logger.js';
 
 // Re-export the Durable Object classes so Cloudflare can find them
@@ -49,16 +48,6 @@ function corsResponse(response) {
     newResponse.headers.set(key, value);
   }
   return newResponse;
-}
-
-/** Tagged "juicebox" like the page's own Share links, plus "juicebox-mcp" to tell the two apart. */
-function makeShortener(env) {
-  return tinyURLShortener({
-    endpoint: env.TINYURL_ENDPOINT || 'https://api.tinyurl.com/create',
-    apiKey: env.TINYURL_API_KEY,
-    domain: env.TINYURL_DOMAIN || 't.3dg.io',
-    tags: ['juicebox', 'juicebox-mcp']
-  });
 }
 
 export default {
@@ -144,7 +133,6 @@ async function handleMcpRequest(request, env) {
 
     // Build the deps object for tool handlers
     const browserUrl = env.BROWSER_URL || 'https://juicebox-mcp.workers.dev';
-    const shortenURL = makeShortener(env);
 
     // Fallback: ChatGPT doesn't echo mcp-session-id back, but sends x-openai-session on every request.
     // HMAC the raw token so it's not exposed in browser URLs. No secret, no fallback key.
@@ -162,7 +150,6 @@ async function handleMcpRequest(request, env) {
     const deps = {
       sessionId: effectiveSessionId,
       browserUrl,
-      shortenURL,
       log: { logInfo, logWarn, logError },
       room: roomForSession(env, effectiveSessionId),
     };

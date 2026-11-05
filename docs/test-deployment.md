@@ -60,9 +60,8 @@ Someone has to do this once, ever. From `packages/server`:
    (`--production-branch` is a setting every Cloudflare Pages project needs; this is still the
    dev project.)
 2. Deploy, as in step 2: `scripts/deploy-dev.sh <path to juicebox-view>` (from the repo root).
-3. Set the MCP server's two secrets (ask a maintainer for the values):
+3. Set the MCP server's secret (ask a maintainer for the value):
    ```bash
-   npx wrangler secret put TINYURL_API_KEY --env view-dev
    npx wrangler secret put SESSION_HMAC_SECRET --env view-dev
    ```
 

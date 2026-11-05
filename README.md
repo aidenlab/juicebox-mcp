@@ -91,9 +91,7 @@ Each stack's settings in `wrangler.toml`:
 | `workers_dev`, `preview_urls` = `false` | one public hostname per Worker; no `*.workers.dev` second entry point for clients or pages to drift onto |
 | `BROWSER_URL` | the stack's Page, where join and snapshot links open (the trailing slash matters) |
 | `ALLOWED_ORIGINS` | exact-match `Origin` check on `/ws`, listing the stack's Page; WebSockets are not covered by CORS |
-| `TINYURL_DOMAIN`, `TINYURL_ENDPOINT` | `t.3dg.io` and the TinyURL API, for snapshot-link shortening in `create_shareable_url` |
 | secret `SESSION_HMAC_SECRET` | keys room ids derived from ChatGPT's `x-openai-session`; unset → that path fails |
-| secret `TINYURL_API_KEY` | unset → `create_shareable_url` returns the long link |
 
 Secrets are set per stack with `wrangler secret put <NAME> --env <env>`. For `wrangler dev`, the top-level `[vars]` point at a local juicebox-view on `localhost:5173`, and `packages/server/.dev.vars` stands in for the secrets.
 
