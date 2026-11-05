@@ -951,34 +951,18 @@ describe('create_shareable_url', () => {
     return (await res.json()).result;
   }
 
-  it('without a TinyURL key answers with the long snapshot link', async () => {
+  it('answers with the full snapshot link, unshortened even with a TinyURL key set', async () => {
     const session = await newSession();
     const page = await pageIn(session);
-
-    const call = callTool(session, 'create_shareable_url');
-    const request = await page.next();
-    page.send({ type: MessageType.ACK, requestId: request.requestId, ok: true, result: 'session=blob:abc123' });
-    const result = await call;
-
-    expect(request.type).toBe(CommandType.GET_COMPRESSED_SESSION);
-    expect(text(result)).toContain(`${env.BROWSER_URL}?session=blob:abc123`);
-  });
-
-  it('with a key, shortens the snapshot link with TinyURL on t.3dg.io', async () => {
-    const session = await newSession();
-    const page = await pageIn(session);
-    const tinyurl = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: { tiny_url: 'https://t.3dg.io/xyz' } }));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const call = callToolWithEnv({ TINYURL_API_KEY: 'test-key' }, session, 'create_shareable_url');
     const request = await page.next();
     page.send({ type: MessageType.ACK, requestId: request.requestId, ok: true, result: 'session=blob:abc123' });
     const result = await call;
 
-    expect(tinyurl).toHaveBeenCalledOnce();
-    const [endpoint, init] = tinyurl.mock.calls[0];
-    expect(endpoint).toBe('https://api.tinyurl.com/create');
-    expect(init.headers.Authorization).toBe('Bearer test-key');
-    expect(JSON.parse(init.body)).toEqual({ url: `${env.BROWSER_URL}?session=blob:abc123`, domain: 't.3dg.io', tags: ['juicebox', 'juicebox-mcp'] });
-    expect(text(result)).toContain('https://t.3dg.io/xyz');
+    expect(request.type).toBe(CommandType.GET_COMPRESSED_SESSION);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(text(result)).toContain(`${env.BROWSER_URL}?session=blob:abc123`);
   });
 });

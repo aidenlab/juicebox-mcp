@@ -321,7 +321,7 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
 
 <figure>
   <div class="figwrap">
-  <svg class="fig" viewBox="0 0 1000 610" role="img" aria-label="Map of the production stack. On the internet: a Cloudflare account holding the Pages project juicebot-web and the Worker juicebot-mcp with its Rooms and Sessions; Claude on Anthropic's servers; TinyURL. On the person's computer: a browser showing the page, and Claude desktop. Wires A to E join them.">
+  <svg class="fig" viewBox="0 0 1000 610" role="img" aria-label="Map of the production stack. On the internet: a Cloudflare account holding the Pages project juicebot-web and the Worker juicebot-mcp with its Rooms and Sessions; Claude on Anthropic's servers. On the person's computer: a browser showing the page, and Claude desktop. Wires A to D join them.">
 
     <text class="t-band" x="20" y="24">ON THE INTERNET</text>
 
@@ -364,9 +364,6 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
     <text class="t-h" x="847" y="106" text-anchor="middle">Claude</text>
     <text class="t-s" x="847" y="126" text-anchor="middle">on Anthropic’s servers;</text>
     <text class="t-s" x="847" y="142" text-anchor="middle">runs the model, calls tools</text>
-    <rect class="bx-q" x="720" y="232" width="160" height="58"/>
-    <text class="t-s" x="800" y="256" text-anchor="middle" style="fill: var(--fg)">TinyURL</text>
-    <text class="t-s" x="800" y="274" text-anchor="middle">shortens share links</text>
 
     <line class="sep" x1="0" y1="352" x2="1000" y2="352"/>
     <text class="t-band" x="20" y="374">ON THE PERSON’S COMPUTER</text>
@@ -411,10 +408,6 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
     <!-- D: conversation -->
     <line class="w" x1="905" y1="185" x2="905" y2="384" marker-start="url(#a)" marker-end="url(#a)"/>
     <text class="tag k" x="913" y="300">D</text>
-
-    <!-- E: TinyURL -->
-    <line class="w" x1="652" y1="261" x2="718" y2="261" marker-end="url(#a)"/>
-    <text class="tag k" x="685" y="253" text-anchor="middle">E</text>
   </svg>
   </div>
   <div class="key" aria-hidden="true">
@@ -444,7 +437,6 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
     <tr><td class="n wk">B</td><td>The page and the Worker’s Room</td><td class="how">WebSocket <code>/ws?room=</code></td><td>Down: commands such as “load this map”. Up: acks, the saved session, and changes the person makes by hand, which the Room passes to every other page in it.</td><td>Opened when the page loads. Stays open, and reopens by itself if it drops.</td></tr>
     <tr><td class="n">C</td><td>Claude and the Worker</td><td class="how">POST <code>/mcp</code></td><td>MCP tool calls, each answered at once.</td><td>Each time the model uses a tool.</td></tr>
     <tr><td class="n">D</td><td>Claude desktop and Anthropic</td><td class="how">Claude’s own</td><td>The conversation. Juicebot never sees it.</td><td>Always.</td></tr>
-    <tr><td class="n">E</td><td>The Worker and TinyURL</td><td class="how">POST</td><td>A long share link, returned short on <code>t.3dg.io</code>.</td><td>When the model makes a shareable link.</td></tr>
   </tbody>
 </table>
 </div>
@@ -613,8 +605,8 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
 <table>
   <thead><tr><th>Place</th><th>Holds</th><th>Who can read it</th><th>A change takes effect</th></tr></thead>
   <tbody>
-    <tr><th><code>wrangler.toml</code> <code>vars</code></th><td><code>BROWSER_URL</code>, <code>ALLOWED_ORIGINS</code>, <code>TINYURL_DOMAIN</code></td><td>Anyone: the file is in git</td><td>On the next <code>wrangler deploy</code> of that stack</td></tr>
-    <tr><th>Worker secrets</th><td><code>TINYURL_API_KEY</code>, <code>SESSION_HMAC_SECRET</code></td><td>Only the Worker</td><td>At once: <code>wrangler secret put <i>NAME</i> --env <i>stack</i></code> deploys a new version</td></tr>
+    <tr><th><code>wrangler.toml</code> <code>vars</code></th><td><code>BROWSER_URL</code>, <code>ALLOWED_ORIGINS</code></td><td>Anyone: the file is in git</td><td>On the next <code>wrangler deploy</code> of that stack</td></tr>
+    <tr><th>Worker secrets</th><td><code>SESSION_HMAC_SECRET</code></td><td>Only the Worker</td><td>At once: <code>wrangler secret put <i>NAME</i> --env <i>stack</i></code> deploys a new version</td></tr>
     <tr><th>The page build</th><td><code>VITE_WS_URL</code></td><td>Anyone: it is in the page’s JavaScript</td><td>On the next build and upload of the page</td></tr>
   </tbody>
 </table>
@@ -634,7 +626,6 @@ dl.words dd { margin: 0.15rem 0 0; color: var(--fg); }
   <tbody>
     <tr><td>The page loads but never joins a Room</td><td>The page was built for another Worker, or its address is missing from <code>ALLOWED_ORIGINS</code></td><td>Redeploy the page with the stack’s script; add the address to the stack’s <code>vars</code> and redeploy the Worker.</td></tr>
     <tr><td>Claude’s links open the wrong page</td><td><code>BROWSER_URL</code></td><td>Correct it in the stack’s <code>vars</code> and redeploy the Worker.</td></tr>
-    <tr><td>Claude’s share links come back long</td><td><code>TINYURL_API_KEY</code> is not set on this stack</td><td><code>wrangler secret put TINYURL_API_KEY --env <i>stack</i></code></td></tr>
     <tr><td>Every tool call from ChatGPT fails</td><td><code>SESSION_HMAC_SECRET</code> is not set on this stack</td><td><code>wrangler secret put SESSION_HMAC_SECRET --env <i>stack</i></code></td></tr>
     <tr><td>The page loses its connection for a moment</td><td>A Worker deploy dropped its WebSocket</td><td>Nothing. It reconnects within 5 s.</td></tr>
     <tr><td>The test stack shows someone else’s work</td><td>Someone deployed after you</td><td>Agree who is testing, then deploy again.</td></tr>

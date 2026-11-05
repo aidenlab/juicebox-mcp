@@ -16,8 +16,7 @@
 # Once, before the first release (from packages/server):
 #   CLOUDFLARE_ACCOUNT_ID=1eadb18bb8557fd1bd06b1d0310a902e \
 #     npx wrangler pages project create juicebox-view --production-branch main
-# and after it, the Worker's secrets (or DEPLOY_ENV=view-prod scripts/deploy-wizard.sh):
-#   npx wrangler secret put TINYURL_API_KEY --env view-prod
+# and after it, the Worker's secret (or DEPLOY_ENV=view-prod scripts/deploy-wizard.sh):
 #   npx wrangler secret put SESSION_HMAC_SECRET --env view-prod
 set -euo pipefail
 

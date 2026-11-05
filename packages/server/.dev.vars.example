@@ -8,5 +8,3 @@ BROWSER_URL=http://localhost:5173/
 # Any string works locally; without it the x-openai-session (ChatGPT) path fails.
 SESSION_HMAC_SECRET=local-dev-only
 
-# Optional. Empty → create_shareable_url returns the long snapshot link unshortened.
-TINYURL_API_KEY=

@@ -195,7 +195,7 @@ finish() {
 # Pass/fail answers are collected and written as a markdown checklist to paste
 # into the ticket.
 
-TOTAL_STAGES=11
+TOTAL_STAGES=10
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$REPO_ROOT/packages/server"
@@ -253,7 +253,7 @@ stage "Before you start"
 say "This deploys the Worker '$WORKER_NAME' from $SERVER_DIR"
 say "to $BASE_URL ([env.$DEPLOY_ENV]), then checks each MCP client against it."
 note "Needs: npm install done at the repo root; curl; a Cloudflare account that owns"
-note "the 3dg.io zone and the Pages projects; the TinyURL account behind t.3dg.io."
+note "the 3dg.io zone and the Pages projects."
 printf '\n'
 if [[ -n "$RELEASE_CMD" ]]; then
   warn "Production: this wizard sets secrets and checks clients but does not deploy;"
@@ -287,25 +287,6 @@ if secret_is_set SESSION_HMAC_SECRET; then
 else
   say "Generating 32 random bytes and storing them; nobody needs to see the value."
   openssl rand -hex 32 | wrangler secret put SESSION_HMAC_SECRET
-fi
-pause
-
-# ──────────────────────────────────────────────────────────────────────────
-stage "Secret: TINYURL_API_KEY"
-say "create_shareable_url shortens snapshot links on the t.3dg.io branded domain."
-say "Unset → links come back unshortened."
-if secret_is_set TINYURL_API_KEY && ! confirm "Already set. Replace it?"; then
-  note "Kept the existing key."
-else
-  open_url "https://tinyurl.com/app/dev"
-  step "Sign in to the TinyURL account that owns the t.3dg.io branded domain."
-  step "Create an API token (or reuse an existing one) that may create TinyURLs."
-  ask_secret TINYURL_API_KEY "Paste the API token (empty skips):"
-  if [[ -n "$TINYURL_API_KEY" ]]; then
-    printf '%s' "$TINYURL_API_KEY" | wrangler secret put TINYURL_API_KEY
-  else
-    SKIPPED+=("TINYURL_API_KEY (cd packages/server && npx wrangler secret put TINYURL_API_KEY)")
-  fi
 fi
 pause
 
