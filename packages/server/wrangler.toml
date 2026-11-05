@@ -62,16 +62,16 @@ ALLOWED_ORIGINS = [
 # `durable_objects`, so those are repeated; migrations are top-level and apply to every
 # environment. Secrets are per environment: `wrangler secret put <NAME> --env <env>`.
 
-# ── Development deployment: "Juicebot view dev" ──────────────────────────────
-# The dev stack (docs/test-deployment.md): Worker juicebot-view-mcp-dev at
-# https://juicebot-view-mcp-dev.3dg.io, paired with the Pages project juicebot-view-dev at
-# https://juicebot-view-dev.pages.dev/ (aidenlab/juicebox-view). It shares nothing with
+# ── Development deployment: "Juicebox view dev" ──────────────────────────────
+# The dev stack (docs/test-deployment.md): Worker juicebox-view-mcp-dev at
+# https://juicebox-view-mcp-dev.3dg.io, paired with the Pages project juicebox-view-dev at
+# https://juicebox-view-dev.pages.dev/ (aidenlab/juicebox-view). It shares nothing with
 # production: its own Rooms, sessions and secrets, and only its own Page is allowed.
 # `scripts/deploy-dev.sh <path to juicebox-view> [branch-or-tag]`; secrets with `wrangler secret put <NAME> --env view-dev`.
 [env.view-dev]
-name = "juicebot-view-mcp-dev"
+name = "juicebox-view-mcp-dev"
 routes = [
-  { pattern = "juicebot-view-mcp-dev.3dg.io", custom_domain = true },
+  { pattern = "juicebox-view-mcp-dev.3dg.io", custom_domain = true },
 ]
 workers_dev = false
 preview_urls = false
@@ -86,14 +86,14 @@ class_name = "McpSession"
 
 [env.view-dev.vars]
 # The MCP serverInfo name, so this stack's connector is told apart from production's.
-SERVER_NAME = "juicebot-view-server"
+SERVER_NAME = "juicebox-view-server"
 # For a local juicebox-view dev server instead, override in .dev.vars or use
 # http://localhost:5173/.
-BROWSER_URL = "https://juicebot-view-dev.pages.dev/"
+BROWSER_URL = "https://juicebox-view-dev.pages.dev/"
 TINYURL_DOMAIN = "t.3dg.io"
 TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
 ALLOWED_ORIGINS = [
-  "https://juicebot-view-dev.pages.dev",
+  "https://juicebox-view-dev.pages.dev",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Deploy juicebox-view and its Worker to the Juicebot dev stack, for testing before a release
+# Deploy juicebox-view and its Worker to the Juicebox dev stack, for testing before a release
 # (docs/test-deployment.md):
 #   scripts/deploy-dev.sh <page-repo> [branch-or-tag] [mcp-ref]
 #
-#   juicebox-view → Pages juicebot-view-dev (juicebot-view-dev.pages.dev),
-#   Worker juicebot-view-mcp-dev (wrangler --env view-dev, juicebot-view-mcp-dev.3dg.io)
+#   juicebox-view → Pages juicebox-view-dev (juicebox-view-dev.pages.dev),
+#   Worker juicebox-view-mcp-dev (wrangler --env view-dev, juicebox-view-mcp-dev.3dg.io)
 #
 # <page-repo> is your clone of juicebox-view. It is checked out at [branch-or-tag] (default: its
 # main branch) into a throwaway worktree and uploaded by scripts/deploy-page.sh. A tag or a
@@ -18,8 +18,8 @@ set -euo pipefail
 USAGE="usage: scripts/deploy-dev.sh <page-repo> [branch-or-tag] [mcp-ref]"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WRANGLER_ENV=view-dev
-PAGE_URL=https://juicebot-view-dev.pages.dev/
-MCP_URL=https://juicebot-view-mcp-dev.3dg.io/mcp
+PAGE_URL=https://juicebox-view-dev.pages.dev/
+MCP_URL=https://juicebox-view-mcp-dev.3dg.io/mcp
 PAGE_REPO="${1:?$USAGE}"
 MCP_REF="${3:-HEAD}"
 git -C "$PAGE_REPO" rev-parse --git-dir >/dev/null 2>&1 || { echo "$PAGE_REPO is not a git clone" >&2; exit 1; }

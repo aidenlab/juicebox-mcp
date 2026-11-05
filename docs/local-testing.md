@@ -48,15 +48,15 @@ The server tests run the real Worker and Durable Objects locally, with no Cloudf
 
 ## Drive the dev stack from a script (no local relay needed)
 
-The Juicebot dev stack is the Worker at `juicebot-view-mcp-dev.3dg.io` and the page at
-`juicebot-view-dev.pages.dev` (CLAUDE.md names the deploy commands). The Claude Code juicebot
+The Juicebox dev stack is the Worker at `juicebox-view-mcp-dev.3dg.io` and the page at
+`juicebox-view-dev.pages.dev` (CLAUDE.md names the deploy commands). The Claude Code juicebot
 plugin and Claude Desktop connectors point at production, `juicebot-mcp.3dg.io`, whose rooms
 are a different Durable Object namespace, so they cannot drive a page on the dev site.
 `scripts/dev-check.mjs` talks to the dev Worker's `/mcp` directly:
 
 ```bash
 ROOM=T$(tr -dc 'A-HJKMNP-TV-Z0-9' </dev/urandom | head -c9)   # a fresh throwaway room
-# open https://juicebot-view-dev.pages.dev/?room=$ROOM in one or two tabs, then:
+# open https://juicebox-view-dev.pages.dev/?room=$ROOM in one or two tabs, then:
 node scripts/dev-check.mjs $ROOM list_panels
 node scripts/dev-check.mjs $ROOM load_map '{"url":"https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/31811e40-e3ca-4456-8ba6-2ee66d6c7104/4DNFI7J8BQ4P.hic","name":"GM"}'
 node scripts/dev-check.mjs $ROOM load_map '{"url":"https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/31811e40-e3ca-4456-8ba6-2ee66d6c7104/4DNFI7J8BQ4P.hic","name":"GM2","panel":"new"}'
@@ -64,7 +64,7 @@ node scripts/dev-check.mjs $ROOM load_map '{"url":"https://4dn-open-data-public.
 
 Always a fresh room, never one someone is working in: the room asks its first live page for
 the session on every join, and a probe that does not ack breaks that room. For a headless
-peer, `playwright-cli -s=<name> open "https://juicebot-view-dev.pages.dev/?room=$ROOM"` and count
+peer, `playwright-cli -s=<name> open "https://juicebox-view-dev.pages.dev/?room=$ROOM"` and count
 `.hic-root` elements after each call; the gene track draws nothing at whole-genome zoom, so
 a colour check needs a gene-dense locus first (`goto_locus` with `"panel":"all"`).
 

@@ -184,7 +184,7 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Deploys packages/server to the Juicebot dev stack and walks the maintainer through
+# Deploys packages/server to the Juicebox dev stack and walks the maintainer through
 # the steps only a human can do: Cloudflare login, secrets, and connecting each MCP
 # client end to end. Run from anywhere:
 #   scripts/deploy-wizard.sh                  # dev stack ([env.view-dev])
@@ -197,13 +197,13 @@ TOTAL_STAGES=11
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$REPO_ROOT/packages/server"
-# DEPLOY_ENV=view-dev (the default) is the Worker juicebot-view-mcp-dev at
-# https://juicebot-view-mcp-dev.3dg.io, paired with the juicebox-view Page at
-# https://juicebot-view-dev.pages.dev/. DEPLOY_ENV=prod is production
+# DEPLOY_ENV=view-dev (the default) is the Worker juicebox-view-mcp-dev at
+# https://juicebox-view-mcp-dev.3dg.io, paired with the juicebox-view Page at
+# https://juicebox-view-dev.pages.dev/. DEPLOY_ENV=prod is production
 # (juicebot-mcp.3dg.io, page juicebot.3dg.io), deployed only from a tag.
 DEPLOY_ENV="${DEPLOY_ENV:-view-dev}"
 case "$DEPLOY_ENV" in
-  view-dev) WORKER_NAME="juicebot-view-mcp-dev"; BASE_URL="https://juicebot-view-mcp-dev.3dg.io"; PAGE_URL="https://juicebot-view-dev.pages.dev/" ;;
+  view-dev) WORKER_NAME="juicebox-view-mcp-dev"; BASE_URL="https://juicebox-view-mcp-dev.3dg.io"; PAGE_URL="https://juicebox-view-dev.pages.dev/" ;;
   prod)     WORKER_NAME="juicebot-mcp";          BASE_URL="https://juicebot-mcp.3dg.io";          PAGE_URL="https://juicebot.3dg.io/" ;;
   *)        printf 'DEPLOY_ENV must be view-dev or prod, not %s\n' "$DEPLOY_ENV" >&2; exit 2 ;;
 esac

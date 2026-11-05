@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Call one MCP tool on the Juicebot dev Worker, bound to a room, and print the result text.
+// Call one MCP tool on the Juicebox dev Worker, bound to a room, and print the result text.
 //
 //   node scripts/dev-check.mjs <room> <tool> ['<json args>']
 //   node scripts/dev-check.mjs T35CHECKCQ list_panels
 //   node scripts/dev-check.mjs T35CHECKCQ load_map '{"url":"https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/31811e40-e3ca-4456-8ba6-2ee66d6c7104/4DNFI7J8BQ4P.hic","panel":"new"}'
 //   (a map known to load in the page; an ENCODE portal download URL may fail with "Failed to fetch")
 //
-// Use a throwaway room (open https://juicebot-view-dev.pages.dev/?room=<room> in a tab first), never
+// Use a throwaway room (open https://juicebox-view-dev.pages.dev/?room=<room> in a tab first), never
 // a room someone is working in: the room asks its first live page for the session on every
 // join, and a probe that does not ack breaks that room for everyone in it.
 //
@@ -18,7 +18,7 @@ if (!room || !tool) {
   console.error('usage: node scripts/dev-check.mjs <room> <tool> [json-args]');
   process.exit(2);
 }
-const url = process.env.MCP_URL || 'https://juicebot-view-mcp-dev.3dg.io/mcp';
+const url = process.env.MCP_URL || 'https://juicebox-view-mcp-dev.3dg.io/mcp';
 const headers = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
 
 async function rpc(id, method, params, sessionId) {

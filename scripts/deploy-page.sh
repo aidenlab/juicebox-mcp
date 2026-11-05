@@ -2,8 +2,8 @@
 # Build juicebox-view and upload it to the dev stack's Cloudflare Pages project
 # (docs/test-deployment.md):
 #
-#   juicebox-view (../juicebox-view, or --repo) → Pages "juicebot-view-dev",
-#   https://juicebot-view-dev.pages.dev/, relay wss://juicebot-view-mcp-dev.3dg.io/ws
+#   juicebox-view (../juicebox-view, or --repo) → Pages "juicebox-view-dev",
+#   https://juicebox-view-dev.pages.dev/, relay wss://juicebox-view-mcp-dev.3dg.io/ws
 #
 #   scripts/deploy-page.sh [--repo <path>]
 #
@@ -30,8 +30,8 @@ done
 set -- "${ARGS[@]+"${ARGS[@]}"}"
 [[ $# -eq 0 ]] || { echo "$USAGE" >&2; exit 2; }
 PAGE_DIR="${PAGE_DIR:-${VIEW_REPO:-$REPO_ROOT/../juicebox-view}}"
-DEFAULT_PROJECT=juicebot-view-dev
-VITE_WS_URL="${VITE_WS_URL:-wss://juicebot-view-mcp-dev.3dg.io/ws}"
+DEFAULT_PROJECT=juicebox-view-dev
+VITE_WS_URL="${VITE_WS_URL:-wss://juicebox-view-mcp-dev.3dg.io/ws}"
 PROJECT="${PROJECT:-$DEFAULT_PROJECT}"
 # Pages deploys run outside packages/server, so wrangler.toml's account_id is passed on here.
 ACCOUNT_ID="$(sed -n 's/^account_id = "\(.*\)"$/\1/p' "$REPO_ROOT/packages/server/wrangler.toml")"
