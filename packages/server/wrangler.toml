@@ -98,6 +98,38 @@ ALLOWED_ORIGINS = [
   "http://127.0.0.1:5173",
 ]
 
+# ── geenee's Juicebox production: "Juicebox view prod" ───────────────────────
+# Worker juicebox-view-mcp at https://juicebox-view-mcp.3dg.io, paired with the Pages project
+# juicebox-view at https://juicebox-view.pages.dev/ (no custom domain). geenee's own prod
+# Deployment (aidenlab/geenee ADR 0004), apart from Juicebot production below: its own Rooms,
+# sessions and secrets, and only its own Page is allowed. Deployed only from a release tag:
+# `scripts/deploy-view-prod.sh view-prod-YYYY-MM-DD`. Secrets: `wrangler secret put <NAME> --env view-prod`.
+[env.view-prod]
+name = "juicebox-view-mcp"
+routes = [
+  { pattern = "juicebox-view-mcp.3dg.io", custom_domain = true },
+]
+workers_dev = false
+preview_urls = false
+
+[[env.view-prod.durable_objects.bindings]]
+name = "WEBSOCKET_ROOM"
+class_name = "WebSocketRoom"
+
+[[env.view-prod.durable_objects.bindings]]
+name = "MCP_SESSION"
+class_name = "McpSession"
+
+[env.view-prod.vars]
+# As [env.view-dev]: told apart from Juicebot production's connector; from dev by its version.
+SERVER_NAME = "juicebox-view-server"
+BROWSER_URL = "https://juicebox-view.pages.dev/"
+TINYURL_DOMAIN = "t.3dg.io"
+TINYURL_ENDPOINT = "https://api.tinyurl.com/create"
+ALLOWED_ORIGINS = [
+  "https://juicebox-view.pages.dev",
+]
+
 # Juicebot production: Worker `juicebot-mcp` on juicebot-mcp.3dg.io, page juicebox-view on
 # juicebot.3dg.io (Pages project `juicebot-web`, named before the page moved to juicebox-view). Deployed only from a release tag by scripts/deploy-prod.sh, never by hand:
 # `scripts/deploy-prod.sh prod-YYYY-MM-DD`. Secrets: `wrangler secret put <NAME> --env prod`.
