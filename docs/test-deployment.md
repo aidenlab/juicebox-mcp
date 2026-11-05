@@ -30,6 +30,9 @@ scripts/deploy-dev.sh <path to juicebox-view> <branch or tag>
 When it finishes it prints the page URL and the MCP URL. Before that it checks that the live MCP
 server reports the commit it just deployed: the server's version (the `serverInfo.version` a
 client sees on connecting) is this repo's branch or tag and short commit, e.g. `main (d4e5f6a)`.
+It also checks the page: https://juicebox-view-mcp-dev.3dg.io/version, readable in a browser,
+shows both, the server's version as `worker` and the page's (juicebox-view's branch or tag and
+short commit, from the `version.json` the deploy writes into the page) as `viewer`.
 A third argument deploys the MCP server from another branch, tag or commit of this repo (default:
 the one checked out).
 

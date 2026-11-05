@@ -51,9 +51,9 @@ if [[ "$WORKER" != 0 ]]; then
   (cd "$WORK/mcp" && npm install --no-audit --no-fund --loglevel=error)
   (cd "$WORK/mcp/packages/server" && npx wrangler deploy --env "$WRANGLER_ENV" \
     --var "SERVER_VERSION:$VERSION" --message "test: page $PAGE_REF, mcp $VERSION")
-  "$REPO_ROOT/scripts/check-version.sh" "$MCP_URL" "$VERSION"
+  "$REPO_ROOT/scripts/check-version.sh" "$MCP_URL" --worker "$VERSION"
 fi
 
 (cd "$WORK/page" && npm ci --no-audit --no-fund --loglevel=error)
-PAGE_DIR="$WORK/page" "$REPO_ROOT/scripts/deploy-page.sh"
+PAGE_DIR="$WORK/page" PAGE_REF="$PAGE_REF" "$REPO_ROOT/scripts/deploy-page.sh"
 echo "test deploy at $PAGE_REF: $PAGE_URL and $MCP_URL"

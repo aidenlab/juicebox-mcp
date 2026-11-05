@@ -7,6 +7,7 @@
  *   GET  /mcp             - 405 (SSE not supported; JSON responses only)
  *   DELETE /mcp           - MCP protocol (session termination)
  *   OPTIONS /mcp          - CORS preflight
+ *   GET  /version         - what this Deployment runs: the Worker's version and the page's version.json
  *   GET  /*               - 404 (the viewer is hosted by the Page, juicebox-view, not this Worker)
  */
 
@@ -34,6 +35,8 @@ async function deriveSessionId(value, secret) {
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(value));
   return roomIdFromBytes(new Uint8Array(sig));
 }
+
+const PAGE_VERSION_TIMEOUT_MS = 5000;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -89,10 +92,52 @@ export default {
       return corsResponse(await handleMcpRequest(request, env));
     }
 
+    if (url.pathname === '/version' && request.method === 'GET') {
+      return versionResponse(env);
+    }
+
     // The viewer is hosted by the Page (juicebox-view), not this Worker.
     return new Response('Not Found', { status: 404 });
   }
 };
+
+/**
+ * GET /version (aidenlab/juicebox-mcp#23): `{worker, viewer}`, the shape geenee reads from every
+ * Upstream. `worker` is the MCP serverInfo.version; `viewer` is the page's own version.json (at
+ * BROWSER_URL's root, written by scripts/deploy-page.sh), fetched now, not cached, with its `url`
+ * added. A page that cannot be read gives `viewer: {url, error}`, and /version still answers 200.
+ */
+async function versionResponse(env) {
+  const url = new URL('/version.json', env.BROWSER_URL).href;
+  return Response.json(
+    { worker: serverVersion(env), viewer: { url, ...await pageVersion(url) } },
+    { headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } },
+  );
+}
+
+/** The page's version.json as an object, else `{error}` saying what failed. */
+async function pageVersion(url) {
+  try {
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(PAGE_VERSION_TIMEOUT_MS) });
+    if (!res.ok) return { error: `HTTP ${res.status}` };
+    const page = await res.json().catch(() => null);
+    // A page with no version.json may answer its index.html (single-page fallback) with 200.
+    if (!page || typeof page !== 'object' || Array.isArray(page)) return { error: 'version.json is not a JSON object' };
+    // `url` is where the Worker read the file, so a `url` in the file itself gives way to it.
+    const { url: _pageUrl, ...rest } = page;
+    return rest;
+  } catch (error) {
+    logWarn(`[version] ${url}: ${error.message}`);
+    return { error: error.name === 'TimeoutError' ? `no answer in ${PAGE_VERSION_TIMEOUT_MS / 1000} s` : error.message };
+  }
+}
+
+/** What this Deployment runs, `<tag or branch> (<short sha>)`: set from git by the deploy scripts
+ * (`wrangler deploy --var SERVER_VERSION:…`, scripts/version-label.sh). Unset under `wrangler dev`
+ * and the tests. */
+function serverVersion(env) {
+  return env.SERVER_VERSION || 'local';
+}
 
 /**
  * Handle MCP protocol requests (POST, GET, DELETE).
@@ -116,10 +161,7 @@ async function handleMcpRequest(request, env) {
     const mcpServer = new McpServer({
       // SERVER_NAME tells side-by-side stacks apart in a host's connector list ([env.view-dev]).
       name: env.SERVER_NAME || 'juicebox-server',
-      // What this Deployment runs, `<tag or branch> (<short sha>)`: set from git by the deploy
-      // scripts (`wrangler deploy --var SERVER_VERSION:…`, scripts/version-label.sh). Unset under
-      // `wrangler dev` and the tests.
-      version: env.SERVER_VERSION || 'local',
+      version: serverVersion(env),
       // The aidenlab.org favicon; hosts that render serverInfo icons show it beside the connector.
       icons: [{ src: 'https://aidenlab.org/favicon.ico', mimeType: 'image/x-icon', sizes: ['16x16'] }]
     });
