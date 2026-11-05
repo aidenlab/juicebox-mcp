@@ -190,6 +190,8 @@ finish() {
 #   scripts/deploy-wizard.sh                  # dev stack ([env.view-dev])
 #   DEPLOY_ENV=prod scripts/deploy-wizard.sh  # production: secrets and checks only;
 #                                             # the deploy itself is scripts/deploy-prod.sh
+#   DEPLOY_ENV=view-prod scripts/deploy-wizard.sh  # geenee's Juicebox prod: likewise, deployed
+#                                                  # by scripts/deploy-view-prod.sh
 # Pass/fail answers are collected and written as a markdown checklist to paste
 # into the ticket.
 
@@ -199,13 +201,19 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$REPO_ROOT/packages/server"
 # DEPLOY_ENV=view-dev (the default) is the Worker juicebox-view-mcp-dev at
 # https://juicebox-view-mcp-dev.3dg.io, paired with the juicebox-view Page at
-# https://juicebox-view-dev.pages.dev/. DEPLOY_ENV=prod is production
-# (juicebot-mcp.3dg.io, page juicebot.3dg.io), deployed only from a tag.
+# https://juicebox-view-dev.pages.dev/. DEPLOY_ENV=prod is Juicebot production
+# (juicebot-mcp.3dg.io, page juicebot.3dg.io) and DEPLOY_ENV=view-prod geenee's Juicebox prod
+# (juicebox-view-mcp.3dg.io, page juicebox-view.pages.dev), each deployed only from a tag.
 DEPLOY_ENV="${DEPLOY_ENV:-view-dev}"
+# RELEASE_CMD is the script that releases a tagged Deployment; empty for view-dev, deployed from here.
 case "$DEPLOY_ENV" in
-  view-dev) WORKER_NAME="juicebox-view-mcp-dev"; BASE_URL="https://juicebox-view-mcp-dev.3dg.io"; PAGE_URL="https://juicebox-view-dev.pages.dev/" ;;
-  prod)     WORKER_NAME="juicebot-mcp";          BASE_URL="https://juicebot-mcp.3dg.io";          PAGE_URL="https://juicebot.3dg.io/" ;;
-  *)        printf 'DEPLOY_ENV must be view-dev or prod, not %s\n' "$DEPLOY_ENV" >&2; exit 2 ;;
+  view-dev)  WORKER_NAME="juicebox-view-mcp-dev"; BASE_URL="https://juicebox-view-mcp-dev.3dg.io"; PAGE_URL="https://juicebox-view-dev.pages.dev/"
+             RELEASE_CMD="" ;;
+  view-prod) WORKER_NAME="juicebox-view-mcp";     BASE_URL="https://juicebox-view-mcp.3dg.io";     PAGE_URL="https://juicebox-view.pages.dev/"
+             RELEASE_CMD="scripts/deploy-view-prod.sh view-prod-YYYY-MM-DD" ;;
+  prod)      WORKER_NAME="juicebot-mcp";          BASE_URL="https://juicebot-mcp.3dg.io";          PAGE_URL="https://juicebot.3dg.io/"
+             RELEASE_CMD="scripts/deploy-prod.sh prod-YYYY-MM-DD" ;;
+  *)         printf 'DEPLOY_ENV must be view-dev, view-prod or prod, not %s\n' "$DEPLOY_ENV" >&2; exit 2 ;;
 esac
 PAGE_ORIGIN="${PAGE_URL%/}"
 MCP_URL="$BASE_URL/mcp"
@@ -245,11 +253,11 @@ stage "Before you start"
 say "This deploys the Worker '$WORKER_NAME' from $SERVER_DIR"
 say "to $BASE_URL ([env.$DEPLOY_ENV]), then checks each MCP client against it."
 note "Needs: npm install done at the repo root; curl; a Cloudflare account that owns"
-note "the 3dg.io zone and the Juicebot Pages projects; the TinyURL account behind t.3dg.io."
+note "the 3dg.io zone and the Pages projects; the TinyURL account behind t.3dg.io."
 printf '\n'
-if [[ "$DEPLOY_ENV" == prod ]]; then
+if [[ -n "$RELEASE_CMD" ]]; then
   warn "Production: this wizard sets secrets and checks clients but does not deploy;"
-  warn "production is deployed only from a tag by scripts/deploy-prod.sh."
+  warn "[env.$DEPLOY_ENV] is deployed only from a tag by ${RELEASE_CMD%% *}."
 fi
 confirm "Go ahead on those terms?" || { say "Stopped. Nothing changed."; exit 0; }
 
@@ -303,9 +311,9 @@ pause
 
 # ──────────────────────────────────────────────────────────────────────────
 stage "Deploy the Worker"
-if [[ "$DEPLOY_ENV" == prod ]]; then
+if [[ -n "$RELEASE_CMD" ]]; then
   say "Production is deployed from a release tag, not from here:"
-  step "scripts/deploy-prod.sh prod-YYYY-MM-DD"
+  step "$RELEASE_CMD"
   pause "Press Enter once production is deployed (or already was)"
 else
   say "Runs 'wrangler deploy --env $DEPLOY_ENV' in packages/server: Worker $WORKER_NAME on"
