@@ -36,8 +36,8 @@ Both production scripts release from tags in the same two repos. If both used `p
 
 ## Known costs
 
-- **juicebox-view collects tags that mark no change.** Releases tag both repos with the same name, so juicebox-view gets a tag even when it hasn't changed. Example: `prod-2026-10-27` and `view-prod-2026-11-05` through `view-prod-2026-11-05.3` all point at juicebox-view `b587dbc`. [#31](https://github.com/aidenlab/juicebox-mcp/issues/31) fixes this by pinning the juicebox-view commit in this repo.
-- **Rollback to some early tags is broken.** juicebox-view has no `prod-2026-10-11` or `prod-2026-10-11.1` tags, so those Juicebot releases can't be deployed again with the script as it is now.
+- **juicebox-view has release tags that mark no change (fixed going forward).** Releases used to tag both repos with the same name, so juicebox-view got a tag even when it hadn't changed. For example, `prod-2026-10-27` and `view-prod-2026-11-05` through `view-prod-2026-11-05.3` all point at juicebox-view `b587dbc`. Since [#31](https://github.com/aidenlab/juicebox-mcp/issues/31), a release is one tag on this repo, and the Page comes from the juicebox-view commit pinned in `viewer.pin` ([`production-deployment.md`](production-deployment.md)). The old juicebox-view tags stay, because rolling back to the releases from before the pin uses them.
+- **Rollback to some early tags is broken.** `prod-2026-10-11` and `prod-2026-10-11.1` have no `viewer.pin`, and juicebox-view has no tags with those names to fall back to, so the current script can't deploy those Juicebot releases again.
 - **Every release step happens twice:** two scripts, two `wrangler.toml` envs, two Pages projects and two secrets to keep in step.
 
 ## The way out (not decided)
