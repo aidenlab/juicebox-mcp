@@ -10,6 +10,13 @@ export default defineConfig({
           include: ['packages/remote/test/**/*.test.js'],
         },
       },
+      {
+        test: {
+          name: 'scripts',
+          environment: 'node',
+          include: ['scripts/test/**/*.test.js'],
+        },
+      },
       // Runs inside workerd with the Worker and its Durable Object from wrangler.toml.
       'packages/server/vitest.config.js',
     ],

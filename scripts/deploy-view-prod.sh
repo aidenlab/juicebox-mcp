@@ -2,13 +2,17 @@
 # Deploy geenee's Juicebox prod Deployment ("view-prod") from one release tag, never from a
 # working tree:
 #   scripts/deploy-view-prod.sh view-prod-YYYY-MM-DD[.N] [--repo <path>]
-# --repo is the juicebox-view clone (default ../juicebox-view). The tag must exist on origin in
-# both juicebox-mcp and juicebox-view (same name). Both are checked out into throwaway worktrees
-# at the tag; the Worker `juicebox-view-mcp` (wrangler --env view-prod, juicebox-view-mcp.3dg.io)
-# and the Pages project `juicebox-view` (juicebox-view.pages.dev) are deployed from there. Roll
-# back by deploying the previous view-prod- tag. The Worker reports `<tag> (<short sha>)` as its
-# MCP serverInfo.version, checked live after deploying. Releasing: tag juicebox-mcp main and
-# juicebox-view main with the same `view-prod-` name, push both tags, run this.
+# --repo is the juicebox-view clone (default ../juicebox-view). The tag must be on juicebox-mcp's
+# origin; juicebox-view gets no release tags. juicebox-mcp is checked out at the tag and
+# juicebox-view at the commit the tag's viewer.pin names (scripts/resolve-viewer.sh; a tag
+# without viewer.pin uses juicebox-view's tag of the same name), each into a throwaway worktree.
+# The Worker `juicebox-view-mcp` (wrangler --env view-prod, juicebox-view-mcp.3dg.io) and the
+# Pages project `juicebox-view` (juicebox-view.pages.dev) are deployed from there. Roll back by
+# deploying the previous view-prod- tag. The Worker reports `<tag> (<short sha>)` as its MCP
+# serverInfo.version and the Page `<tag> (<juicebox-view short sha>)` as /version's viewer, both
+# checked live after deploying. Releasing (docs/production-deployment.md): move the pin with
+# scripts/pin-viewer.sh if the Page should change and merge that to main, tag juicebox-mcp main
+# with a `view-prod-` name, push the tag, run this.
 #
 # Juicebot production (`prod-` tags, scripts/deploy-prod.sh) is a separate Deployment; the
 # `view-prod-` prefix keeps a tag naming exactly one release (aidenlab/juicebox-mcp#21).
@@ -48,22 +52,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for repo in "$REPO_ROOT" "$VIEW_REPO"; do
-  git -C "$repo" ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null \
-    || { echo "tag $TAG is not on origin of $repo; push it first" >&2; exit 1; }
-  git -C "$repo" fetch -q origin "refs/tags/$TAG:refs/tags/$TAG"
-done
-
+git -C "$REPO_ROOT" ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null \
+  || { echo "tag $TAG is not on juicebox-mcp's origin; push it first" >&2; exit 1; }
+git -C "$REPO_ROOT" fetch -q origin "refs/tags/$TAG:refs/tags/$TAG"
 git -C "$REPO_ROOT" worktree add -q --detach "$WORK/mcp" "$TAG"
-git -C "$VIEW_REPO" worktree add -q --detach "$WORK/view" "$TAG"
-echo "juicebox-mcp $(git -C "$WORK/mcp" rev-parse --short HEAD), juicebox-view $(git -C "$WORK/view" rev-parse --short HEAD) at $TAG"
+# The Page's commit: viewer.pin at the tag, else (older tags) juicebox-view's tag of the same name.
+VIEW_SHA="$("$REPO_ROOT/scripts/resolve-viewer.sh" "$WORK/mcp" "$VIEW_REPO" "$TAG")"
+git -C "$VIEW_REPO" worktree add -q --detach "$WORK/view" "$VIEW_SHA"
+echo "juicebox-mcp $(git -C "$WORK/mcp" rev-parse --short HEAD) at $TAG, juicebox-view $(git -C "$WORK/view" rev-parse --short HEAD)"
 
 (cd "$WORK/mcp" && npm install --no-audit --no-fund --loglevel=error)
 VERSION="$("$REPO_ROOT/scripts/version-label.sh" "$REPO_ROOT" "$TAG")"
 (cd "$WORK/mcp/packages/server" && npx wrangler deploy --env view-prod --var "SERVER_VERSION:$VERSION" --message "$TAG")
 
 (cd "$WORK/view" && npm ci --no-audit --no-fund --loglevel=error)
-PAGE_DIR="$WORK/view" PAGE_REF="$TAG" PROJECT=juicebox-view VITE_WS_URL=wss://juicebox-view-mcp.3dg.io/ws \
+# PAGE_NAME labels the Page with the tag; PAGE_REF is for the deploy-page.sh of tags from before
+# viewer.pin, which reads the label from juicebox-view's tag of the same name.
+PAGE_DIR="$WORK/view" PAGE_REF="$TAG" PAGE_NAME="$TAG" PROJECT=juicebox-view VITE_WS_URL=wss://juicebox-view-mcp.3dg.io/ws \
   "$WORK/mcp/scripts/deploy-page.sh"
 # After the Page, so a slow Worker rollout never leaves the old Page beside the new Worker.
 "$REPO_ROOT/scripts/check-version.sh" "$MCP_URL" --worker "$VERSION"
