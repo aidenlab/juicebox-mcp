@@ -27,7 +27,11 @@ the end:
 scripts/deploy-dev.sh <path to juicebox-view> <branch or tag>
 ```
 
-When it finishes it prints the page URL and the MCP URL.
+When it finishes it prints the page URL and the MCP URL. Before that it checks that the live MCP
+server reports the commit it just deployed: the server's version (the `serverInfo.version` a
+client sees on connecting) is this repo's branch or tag and short commit, e.g. `main (d4e5f6a)`.
+A third argument deploys the MCP server from another branch, tag or commit of this repo (default:
+the one checked out).
 
 The test stack is shared: your deploy replaces the previous one. Tell anyone testing it before
 you deploy.

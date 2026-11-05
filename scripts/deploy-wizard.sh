@@ -312,7 +312,10 @@ else
   say "${BASE_URL#https://}, whose DNS record wrangler creates. The Page is deployed separately"
   say "(scripts/deploy-page.sh, or both at once with scripts/deploy-dev.sh)."
   if confirm "Deploy now?"; then
-    wrangler deploy
+    # This deploys the working tree, so uncommitted changes to tracked files mark the sha dirty.
+    VERSION="$("$REPO_ROOT/scripts/version-label.sh" "$REPO_ROOT")"
+    [[ -z "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no)" ]] || VERSION="${VERSION%)}-dirty)"
+    wrangler deploy --var "SERVER_VERSION:$VERSION"
   else
     say "Stopped before deploying."; exit 0
   fi

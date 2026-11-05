@@ -21,16 +21,18 @@ afterEach(() => {
 });
 
 let rpcId = 0;
-function rpc(method, params, headers = {}) {
-  return SELF.fetch('https://jbmcp.test/mcp', {
+/** A JSON-RPC call to /mcp; with `workerEnv`, on the Worker run directly with those bindings. */
+function rpc(method, params, headers = {}, workerEnv) {
+  const request = new Request('https://jbmcp.test/mcp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', ...headers },
     body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
   });
+  return workerEnv ? worker.fetch(request, workerEnv, createExecutionContext()) : SELF.fetch(request);
 }
 
-function initialize(headers) {
-  return rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '0' } }, headers);
+function initialize(headers, workerEnv) {
+  return rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '0' } }, headers, workerEnv);
 }
 
 /** A fresh MCP session; its id is also the id of the room it starts bound to. */
@@ -105,6 +107,14 @@ describe('initialize', () => {
     const body = await res.json();
     expect(body.result.serverInfo.name).toBe('juicebox-server');
     expect(body.result.serverInfo.icons[0].src).toBe('https://aidenlab.org/favicon.ico');
+  });
+
+  it('reports the deployed build as its version: SERVER_VERSION, else "local"', async () => {
+    const version = async (workerEnv) => (await (await initialize({}, workerEnv)).json()).result.serverInfo.version;
+
+    expect(await version({ ...env, SERVER_VERSION: 'main (d4e5f6a)' })).toBe('main (d4e5f6a)');
+    expect(await version({ ...env, SERVER_VERSION: 'prod-2026-11-12 (a1b2c3d)' })).toBe('prod-2026-11-12 (a1b2c3d)');
+    expect(await version(env)).toBe('local');
   });
 
   it('x-openai-session binds the same room id every time, and a different one per value', async () => {

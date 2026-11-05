@@ -6,7 +6,8 @@
 # worktrees at the tag; the Worker `juicebot-mcp` (wrangler --env prod, juicebot-mcp.3dg.io) and
 # the Pages project `juicebot-web` (juicebot.3dg.io) are deployed from there. Roll back by
 # deploying the previous tag with the script from that tag: up to prod-2026-10-11.1 the page was
-# juicebox-web and the script at those tags builds it. Releasing: tag juicebox-mcp main and
+# juicebox-web and the script at those tags builds it. The Worker reports `<tag> (<short sha>)` as
+# its MCP serverInfo.version, checked live after deploying. Releasing: tag juicebox-mcp main and
 # juicebox-view main with the same `prod-` name, push both tags, run this.
 set -euo pipefail
 
@@ -24,6 +25,7 @@ TAG="${1:?$USAGE}"
 [[ "$TAG" =~ ^prod-[0-9]{4}-[0-9]{2}-[0-9]{2}(\.[0-9]+)?$ ]] || { echo "not a release tag: $TAG (prod-YYYY-MM-DD[.N])" >&2; exit 1; }
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MCP_URL=https://juicebot-mcp.3dg.io/mcp
 VIEW_REPO="${VIEW_REPO:-$REPO_ROOT/../juicebox-view}"
 WORK="$(mktemp -d)"
 cleanup() {
@@ -44,9 +46,12 @@ git -C "$VIEW_REPO" worktree add -q --detach "$WORK/view" "$TAG"
 echo "juicebox-mcp $(git -C "$WORK/mcp" rev-parse --short HEAD), juicebox-view $(git -C "$WORK/view" rev-parse --short HEAD) at $TAG"
 
 (cd "$WORK/mcp" && npm install --no-audit --no-fund --loglevel=error)
-(cd "$WORK/mcp/packages/server" && npx wrangler deploy --env prod --message "$TAG")
+VERSION="$("$REPO_ROOT/scripts/version-label.sh" "$REPO_ROOT" "$TAG")"
+(cd "$WORK/mcp/packages/server" && npx wrangler deploy --env prod --var "SERVER_VERSION:$VERSION" --message "$TAG")
 
 (cd "$WORK/view" && npm ci --no-audit --no-fund --loglevel=error)
 PAGE_DIR="$WORK/view" PROJECT=juicebot-web VITE_WS_URL=wss://juicebot-mcp.3dg.io/ws \
   "$WORK/mcp/scripts/deploy-page.sh"
-echo "released $TAG: https://juicebot.3dg.io/ and https://juicebot-mcp.3dg.io/mcp"
+# After the Page, so a slow Worker rollout never leaves the old Page beside the new Worker.
+"$REPO_ROOT/scripts/check-version.sh" "$MCP_URL" "$VERSION"
+echo "released $TAG: https://juicebot.3dg.io/ and $MCP_URL"
