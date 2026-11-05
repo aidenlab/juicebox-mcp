@@ -8,6 +8,7 @@
  *   DELETE /mcp           - MCP protocol (session termination)
  *   OPTIONS /mcp          - CORS preflight
  *   GET  /version         - what this Deployment runs: the Worker's version and the page's version.json
+ *                           (JSON; a page instead when the request asks for HTML, as a browser does)
  *   GET  /*               - 404 (the viewer is hosted by the Page, juicebox-view, not this Worker)
  */
 
@@ -17,6 +18,7 @@ import { registerTools } from './mcp/toolHandlers.js';
 import { roomForSession } from './room.js';
 import { ROOM_ID, roomIdFromBytes, mintRoomId } from './roomId.js';
 import { logInfo, logWarn, logError } from './lib/logger.js';
+import { versionPage } from './versionPage.js';
 
 // Re-export the Durable Object classes so Cloudflare can find them
 export { WebSocketRoom } from './durableObjects/WebSocketRoom.js';
@@ -93,7 +95,7 @@ export default {
     }
 
     if (url.pathname === '/version' && request.method === 'GET') {
-      return versionResponse(env);
+      return versionResponse(request, env);
     }
 
     // The viewer is hosted by the Page (juicebox-view), not this Worker.
@@ -106,13 +108,19 @@ export default {
  * Upstream. `worker` is the MCP serverInfo.version; `viewer` is the page's own version.json (at
  * BROWSER_URL's root, written by scripts/deploy-page.sh), fetched now, not cached, with its `url`
  * added. A page that cannot be read gives `viewer: {url, error}`, and /version still answers 200.
+ * A request whose Accept names text/html (a browser opening the address) gets the same answer as a
+ * page; everything else (scripts/check-version.sh, curl) gets the JSON.
  */
-async function versionResponse(env) {
+async function versionResponse(request, env) {
   const url = new URL('/version.json', env.BROWSER_URL).href;
-  return Response.json(
-    { worker: serverVersion(env), viewer: { url, ...await pageVersion(url) } },
-    { headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } },
-  );
+  const body = { worker: serverVersion(env), viewer: { url, ...await pageVersion(url) } };
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
+  if ((request.headers.get('Accept') || '').includes('text/html')) {
+    return new Response(versionPage(new URL(request.url).origin, body), {
+      headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+  return Response.json(body, { headers });
 }
 
 /** The page's version.json as an object, else `{error}` saying what failed. */
