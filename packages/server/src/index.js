@@ -127,7 +127,10 @@ async function handleMcpRequest(request, env) {
     const mcpServer = new McpServer({
       // SERVER_NAME tells side-by-side stacks apart in a host's connector list ([env.view-dev]).
       name: env.SERVER_NAME || 'juicebox-server',
-      version: '1.1.0',
+      // What this Deployment runs, `<tag or branch> (<short sha>)`: set from git by the deploy
+      // scripts (`wrangler deploy --var SERVER_VERSION:…`, scripts/version-label.sh). Unset under
+      // `wrangler dev` and the tests.
+      version: env.SERVER_VERSION || 'local',
       // The aidenlab.org favicon; hosts that render serverInfo icons show it beside the connector.
       icons: [{ src: 'https://aidenlab.org/favicon.ico', mimeType: 'image/x-icon', sizes: ['16x16'] }]
     });

@@ -10,7 +10,9 @@
 # main branch) into a throwaway worktree and uploaded by scripts/deploy-page.sh. A tag or a
 # local branch is used as it is in the clone; a branch only on origin is fetched. The Worker is
 # deployed from juicebox-mcp at [mcp-ref] (default HEAD), also from a worktree, so uncommitted
-# changes never ship. WORKER=0 deploys the Page only.
+# changes never ship, and reports `<mcp-ref's branch or tag> (<short sha>)` as its MCP
+# serverInfo.version (scripts/version-label.sh), which is checked live after deploying.
+# WORKER=0 deploys the Page only.
 set -euo pipefail
 
 USAGE="usage: scripts/deploy-dev.sh <page-repo> [branch-or-tag] [mcp-ref]"
@@ -43,10 +45,13 @@ git -C "$PAGE_REPO" worktree add -q --detach "$WORK/page" "$PAGE_COMMIT"
 echo "Page $(git -C "$WORK/page" rev-parse --short HEAD) at $PAGE_REF"
 
 if [[ "$WORKER" != 0 ]]; then
+  VERSION="$("$REPO_ROOT/scripts/version-label.sh" "$REPO_ROOT" "$MCP_REF")"
   git -C "$REPO_ROOT" worktree add -q --detach "$WORK/mcp" "$MCP_REF"
-  echo "juicebox-mcp $(git -C "$WORK/mcp" rev-parse --short HEAD) at $MCP_REF"
+  echo "juicebox-mcp $VERSION"
   (cd "$WORK/mcp" && npm install --no-audit --no-fund --loglevel=error)
-  (cd "$WORK/mcp/packages/server" && npx wrangler deploy --env "$WRANGLER_ENV" --message "test: page $PAGE_REF, mcp $MCP_REF")
+  (cd "$WORK/mcp/packages/server" && npx wrangler deploy --env "$WRANGLER_ENV" \
+    --var "SERVER_VERSION:$VERSION" --message "test: page $PAGE_REF, mcp $VERSION")
+  "$REPO_ROOT/scripts/check-version.sh" "$MCP_URL" "$VERSION"
 fi
 
 (cd "$WORK/page" && npm ci --no-audit --no-fund --loglevel=error)
