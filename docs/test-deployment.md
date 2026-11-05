@@ -1,7 +1,7 @@
 # Deploying a test version of Juicebot
 
 The test version of Juicebot is the dev stack: the juicebox-view page at
-https://juicebot-view-dev.pages.dev/ and its own MCP server. Deploying it never affects
+https://juicebox-view-dev.pages.dev/ and its own MCP server. Deploying it never affects
 production.
 
 ## 1. Set up your machine (once)
@@ -40,22 +40,22 @@ To undo a deploy, run the command again with the branch or tag that was deployed
 
 ## 3. Connect Claude desktop (once)
 
-In Claude desktop, Settings → Connectors → Add custom connector: name `Juicebot dev`, URL
-`https://juicebot-view-mcp-dev.3dg.io/mcp`.
+In Claude desktop, Settings → Connectors → Add custom connector: name `Juicebox dev`, URL
+`https://juicebox-view-mcp-dev.3dg.io/mcp`.
 
 ## 4. Check it works
 
 In a chat with the connector enabled, ask Claude to open Juicebox. Open the link it gives you
 and ask it to load a map.
 
-## Creating the dev stack (only if https://juicebot-view-dev.pages.dev/ does not load)
+## Creating the dev stack (only if https://juicebox-view-dev.pages.dev/ does not load)
 
 Someone has to do this once, ever. From `packages/server`:
 
 1. Create the page's project:
    ```bash
    CLOUDFLARE_ACCOUNT_ID=1eadb18bb8557fd1bd06b1d0310a902e \
-     npx wrangler pages project create juicebot-view-dev --production-branch main --force
+     npx wrangler pages project create juicebox-view-dev --production-branch main --force
    ```
    (`--production-branch` is a setting every Cloudflare Pages project needs; this is still the
    dev project.)
@@ -65,3 +65,7 @@ Someone has to do this once, ever. From `packages/server`:
    npx wrangler secret put TINYURL_API_KEY --env view-dev
    npx wrangler secret put SESSION_HMAC_SECRET --env view-dev
    ```
+
+Until November 2026 the dev stack was the Worker `juicebot-view-mcp-dev` and the Pages
+project `juicebot-view-dev`. They keep serving, no longer deployed to, until geenee's dev and prod
+point at the renamed stack, and are then deleted (aidenlab/geenee#62).

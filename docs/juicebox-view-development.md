@@ -6,7 +6,7 @@ Claude, and when a version is worth sharing, deploy it to the hosted view dev st
 The MCP server is never re-pointed between iterations. It knows the page through two settings
 per environment: `BROWSER_URL` (where join links open) and `ALLOWED_ORIGINS` (which pages may
 open `/ws`). Locally both name `localhost:5173`; on the view dev stack both name
-`juicebot-view-dev.pages.dev`. Only the page changes.
+`juicebox-view-dev.pages.dev`. Only the page changes.
 
 ## The moving parts
 
@@ -157,8 +157,8 @@ juicebox-view and `npx playwright install chromium` done once; details in juiceb
 
 | | |
 |---|---|
-| Page | https://juicebot-view-dev.pages.dev/ (Pages project `juicebot-view-dev`) |
-| MCP connector | `https://juicebot-view-mcp-dev.3dg.io/mcp` (Worker `juicebot-view-mcp-dev`, `wrangler --env view-dev`) |
+| Page | https://juicebox-view-dev.pages.dev/ (Pages project `juicebox-view-dev`) |
+| MCP connector | `https://juicebox-view-mcp-dev.3dg.io/mcp` (Worker `juicebox-view-mcp-dev`, `wrangler --env view-dev`) |
 
 Add the connector once in Claude (Settings → Connectors). It stays the same across deploys.
 
@@ -174,7 +174,7 @@ WORKER=0 scripts/deploy-dev.sh /Users/turner/AidenLabDevelopment/juicebox-view <
   throwaway worktree, and the Worker from this repo's `HEAD` (or a fourth argument). Commit the
   iteration to a branch first; a local branch need not be pushed.
 - `WORKER=0` skips the Worker deploy when only the page changed.
-- The build bakes in `VITE_WS_URL=wss://juicebot-view-mcp-dev.3dg.io/ws` and fails if the built
+- The build bakes in `VITE_WS_URL=wss://juicebox-view-mcp-dev.3dg.io/ws` and fails if the built
   assets do not contain it.
 - The stack is shared: your deploy replaces the previous one. Tell anyone testing it first. To
   undo, deploy the branch or tag that was there before.
@@ -187,15 +187,15 @@ runs `npm ci`, then calls `scripts/deploy-page.sh`, which does two things:
 
 ```bash
 # scripts/deploy-page.sh: build the page for the hosted relay
-VITE_WS_URL=wss://juicebot-view-mcp-dev.3dg.io/ws npm run build
+VITE_WS_URL=wss://juicebox-view-mcp-dev.3dg.io/ws npm run build
 
 # scripts/deploy-page.sh: upload dist/ to the Pages project (the copy to Cloudflare)
-npx wrangler pages deploy dist --project-name juicebot-view-dev --branch main --commit-dirty=true
+npx wrangler pages deploy dist --project-name juicebox-view-dev --branch main --commit-dirty=true
 ```
 
 `--branch main` makes the upload the project's production deployment, so it replaces what
-https://juicebot-view-dev.pages.dev/ serves within seconds. Every upload is kept, so the
-Cloudflare dashboard (Pages → `juicebot-view-dev` → Deployments) can also roll back.
+https://juicebox-view-dev.pages.dev/ serves within seconds. Every upload is kept, so the
+Cloudflare dashboard (Pages → `juicebox-view-dev` → Deployments) can also roll back.
 
 To deploy your working copy as it is, uncommitted changes included, and the page only, call
 the inner script directly:
@@ -209,9 +209,9 @@ Or by hand, from juicebox-view:
 
 ```bash
 cd /Users/turner/AidenLabDevelopment/juicebox-view
-VITE_WS_URL=wss://juicebot-view-mcp-dev.3dg.io/ws npm run build
+VITE_WS_URL=wss://juicebox-view-mcp-dev.3dg.io/ws npm run build
 CLOUDFLARE_ACCOUNT_ID=1eadb18bb8557fd1bd06b1d0310a902e \
-  npx wrangler pages deploy dist --project-name juicebot-view-dev --branch main
+  npx wrangler pages deploy dist --project-name juicebox-view-dev --branch main
 ```
 
 Do not leave out `VITE_WS_URL`. `npm run build` does not read `.env.development`, so without it
