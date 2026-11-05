@@ -123,7 +123,8 @@ async function pageVersion(url) {
     const page = await res.json().catch(() => null);
     // A page with no version.json may answer its index.html (single-page fallback) with 200.
     if (!page || typeof page !== 'object' || Array.isArray(page)) return { error: 'version.json is not a JSON object' };
-    const { url: _ignored, ...rest } = page;
+    // `url` is where the Worker read the file, so a `url` in the file itself gives way to it.
+    const { url: _pageUrl, ...rest } = page;
     return rest;
   } catch (error) {
     logWarn(`[version] ${url}: ${error.message}`);
