@@ -77,9 +77,11 @@ Every deploy runs from a maintainer's machine with `wrangler`; nothing deploys f
 
 | Stack | Page | MCP server | Deployed by |
 |---|---|---|---|
-| Production | https://juicebot.3dg.io/ | `https://juicebot-mcp.3dg.io/mcp` | `scripts/deploy-prod.sh prod-YYYY-MM-DD`, from a tag pushed on both this repo and juicebox-view |
-| Juicebox prod (geenee) | https://juicebox-view.pages.dev/ | `https://juicebox-view-mcp.3dg.io/mcp` | `scripts/deploy-view-prod.sh view-prod-YYYY-MM-DD`, from a tag pushed on both this repo and juicebox-view |
+| Production | https://juicebot.3dg.io/ | `https://juicebot-mcp.3dg.io/mcp` | `scripts/deploy-prod.sh prod-YYYY-MM-DD`, from a tag on this repo; the Page is the juicebox-view commit in `viewer.pin` |
+| Juicebox prod (geenee) | https://juicebox-view.pages.dev/ | `https://juicebox-view-mcp.3dg.io/mcp` | `scripts/deploy-view-prod.sh view-prod-YYYY-MM-DD`, from a tag on this repo; the Page is the juicebox-view commit in `viewer.pin` |
 | Dev | https://juicebox-view-dev.pages.dev/ | `https://juicebox-view-mcp-dev.3dg.io/mcp` | `scripts/deploy-dev.sh <juicebox-view clone> [branch-or-tag]` ([`docs/test-deployment.md`](docs/test-deployment.md)) |
+
+Releasing to production is one tag on this repo; juicebox-view gets no release tags. The juicebox-view commit both production Pages are built from is pinned in [`viewer.pin`](viewer.pin) and moved by `scripts/pin-viewer.sh [<ref>]` (default juicebox-view `origin/main`) in a reviewable commit. The steps, and how to bump the pin: [`docs/production-deployment.md`](docs/production-deployment.md).
 
 `scripts/deploy-wizard.sh` walks a maintainer through login, the two secrets, the dev Worker deploy, probing `/mcp` and `/ws`, and connecting each client end to end. How the pieces fit: [`docs/how-juicebot-deploys.html`](docs/how-juicebot-deploys.html).
 

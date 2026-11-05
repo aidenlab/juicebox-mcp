@@ -18,7 +18,9 @@
 # The upload carries version.json at the Page's root, `{"version": "<ref> (<short sha>)"}` from
 # scripts/version-label.sh for --ref (else PAGE_REF, else the checkout's HEAD), with -dirty after
 # the sha when tracked files have uncommitted changes. --ref names how the checkout was reached
-# (deploy-dev.sh's branch or tag, a release tag) and must be the commit checked out. After the
+# (deploy-dev.sh's branch or tag) and must be the commit checked out. PAGE_NAME, if set, is
+# used in place of --ref's name, with the checkout's own short sha: the release scripts pass
+# their juicebox-mcp tag, which juicebox-view does not have (viewer.pin, #31). After the
 # upload, the Worker the Page talks to (VITE_WS_URL's host) must report that version as
 # `viewer.version` on its /version (aidenlab/juicebox-mcp#23; scripts/check-version.sh).
 #
@@ -47,10 +49,14 @@ PROJECT="${PROJECT:-$DEFAULT_PROJECT}"
 ACCOUNT_ID="$(sed -n 's/^account_id = "\(.*\)"$/\1/p' "$REPO_ROOT/packages/server/wrangler.toml")"
 [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" || -z "$ACCOUNT_ID" ]] || export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
 PAGE_REF="${PAGE_REF:-HEAD}"
-VERSION="$("$REPO_ROOT/scripts/version-label.sh" "$PAGE_DIR" "$PAGE_REF")"
-SHA="${VERSION##* (}"; SHA="${SHA%)}"
-[[ "$SHA" == "$(git -C "$PAGE_DIR" rev-parse --short HEAD)" ]] \
-  || { echo "$PAGE_REF ($SHA) is not the commit checked out in $PAGE_DIR" >&2; exit 1; }
+if [[ -n "${PAGE_NAME:-}" ]]; then
+  VERSION="$PAGE_NAME ($(git -C "$PAGE_DIR" rev-parse --short HEAD))"
+else
+  VERSION="$("$REPO_ROOT/scripts/version-label.sh" "$PAGE_DIR" "$PAGE_REF")"
+  SHA="${VERSION##* (}"; SHA="${SHA%)}"
+  [[ "$SHA" == "$(git -C "$PAGE_DIR" rev-parse --short HEAD)" ]] \
+    || { echo "$PAGE_REF ($SHA) is not the commit checked out in $PAGE_DIR" >&2; exit 1; }
+fi
 if [[ -n "$(git -C "$PAGE_DIR" status --porcelain --untracked-files=no)" ]]; then
   if [[ "$VERSION" == *")" ]]; then VERSION="${VERSION%)}-dirty)"; else VERSION="$VERSION-dirty"; fi
 fi

@@ -192,6 +192,8 @@ finish() {
 #                                             # the deploy itself is scripts/deploy-prod.sh
 #   DEPLOY_ENV=view-prod scripts/deploy-wizard.sh  # geenee's Juicebox prod: likewise, deployed
 #                                                  # by scripts/deploy-view-prod.sh
+# A production release is one tag on juicebox-mcp; the Page comes from viewer.pin, moved by
+# scripts/pin-viewer.sh (docs/production-deployment.md).
 # Pass/fail answers are collected and written as a markdown checklist to paste
 # into the ticket.
 
