@@ -11,10 +11,13 @@ afterEach(() => vi.restoreAllMocks());
 
 const PAGE = 'https://juicebox-view-dev.pages.dev/';
 
-function getVersion(vars = {}) {
+function getVersion(vars = {}, headers = {}) {
   const workerEnv = { ...env, SERVER_VERSION: 'main (83f47ca)', BROWSER_URL: PAGE, ...vars };
-  return worker.fetch(new Request('https://jbmcp.test/version'), workerEnv, createExecutionContext());
+  return worker.fetch(new Request('https://jbmcp.test/version', { headers }), workerEnv, createExecutionContext());
 }
+
+/** What a browser sends when the address is opened. */
+const BROWSER = { Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' };
 
 /** Serve `response` (or throw it, if an Error) for the page fetch; returns the spy. */
 function page(response) {
@@ -63,6 +66,49 @@ describe('GET /version', () => {
     expect(await res.json()).toEqual({
       worker: 'main (83f47ca)',
       viewer: { url: 'https://juicebox-view-dev.pages.dev/version.json', error },
+    });
+  });
+
+  it('answers JSON to curl and scripts, which do not ask for HTML', async () => {
+    page(Response.json({ version: 'main (9e1d2b7)' }));
+
+    const res = await getVersion({}, { Accept: '*/*' });
+
+    expect(res.headers.get('Content-Type')).toMatch(/^application\/json/);
+  });
+
+  describe('opened in a browser', () => {
+    it('answers a page naming both versions and where each runs', async () => {
+      page(Response.json({ version: 'main (9e1d2b7)' }));
+
+      const res = await getVersion({}, BROWSER);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+      const html = await res.text();
+      expect(html).toMatch(/^<!doctype html>/);
+      expect(html).toContain('main (83f47ca)');
+      expect(html).toContain('main (9e1d2b7)');
+      expect(html).toContain('jbmcp.test');
+      expect(html).toContain('juicebox-view-dev.pages.dev');
+    });
+
+    it('shows why the page\'s version could not be read', async () => {
+      page(new Response('Not Found', { status: 404 }));
+
+      const html = await (await getVersion({}, BROWSER)).text();
+
+      expect(html).toContain('HTTP 404');
+    });
+
+    it('escapes what the page\'s file says', async () => {
+      page(Response.json({ version: '<script>alert(1)</script>' }));
+
+      const html = await (await getVersion({}, BROWSER)).text();
+
+      expect(html).not.toContain('<script>alert(1)</script>');
+      expect(html).toContain('&#60;script&#62;');
     });
   });
 });
