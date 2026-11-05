@@ -63,8 +63,8 @@ VERSION="$("$REPO_ROOT/scripts/version-label.sh" "$REPO_ROOT" "$TAG")"
 (cd "$WORK/mcp/packages/server" && npx wrangler deploy --env view-prod --var "SERVER_VERSION:$VERSION" --message "$TAG")
 
 (cd "$WORK/view" && npm ci --no-audit --no-fund --loglevel=error)
-PAGE_DIR="$WORK/view" PROJECT=juicebox-view VITE_WS_URL=wss://juicebox-view-mcp.3dg.io/ws \
+PAGE_DIR="$WORK/view" PAGE_REF="$TAG" PROJECT=juicebox-view VITE_WS_URL=wss://juicebox-view-mcp.3dg.io/ws \
   "$WORK/mcp/scripts/deploy-page.sh"
 # After the Page, so a slow Worker rollout never leaves the old Page beside the new Worker.
-"$REPO_ROOT/scripts/check-version.sh" "$MCP_URL" "$VERSION"
+"$REPO_ROOT/scripts/check-version.sh" "$MCP_URL" --worker "$VERSION"
 echo "released $TAG: $PAGE_URL and $MCP_URL"

@@ -50,7 +50,7 @@ A tool call flows: client → `/mcp` tool handler → Durable Object → WebSock
 
 ### `packages/server`
 
-- `src/index.js` — Worker entry: routes, CORS, MCP transport, session and room id minting, `/ws` Origin check.
+- `src/index.js` — Worker entry: routes, CORS, MCP transport, session and room id minting, `/ws` Origin check, and `GET /version` (`{worker, viewer}`: `SERVER_VERSION` and the page's `version.json` at `BROWSER_URL`'s root, fetched per request; a page that cannot be read gives `viewer.error`, still 200). The deploy scripts write that file (`scripts/deploy-page.sh`) and check both with `scripts/check-version.sh`.
 - `src/durableObjects/WebSocketRoom.js` — one Durable Object per room; owns the sockets, relays sync events to other peers, fans commands out and waits for acks, keeps the last saved session for late joiners (`requestSessionFromPeer` → `peerSessionData`). Every message re-arms an alarm 24 h out; it deletes the room's storage and, if no page is left, marks the room expired so later joins get `error {code: 'room-expired'}` (ADR-0006).
 - `src/durableObjects/McpSession.js` — one Durable Object per MCP session; stores the room `join_room` bound it to (`getRoom`/`setRoom` over RPC).
 - `src/room.js` — the only way the Worker reaches a room: `roomForSession(env, sessionId)` resolves the session's room (the `join_room` binding, else the session id) and returns a handle (`send`, `request`, `isConnected`, `current`, `bind`) over the two Durable Objects' RPC methods, and re-exports the room's ack outcomes (`AckStatus`) and `ACK_TIMEOUT_MS` for the tools.

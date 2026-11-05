@@ -183,7 +183,9 @@ WORKER=0 scripts/deploy-dev.sh /Users/turner/AidenLabDevelopment/juicebox-view <
 
 The copy to Cloudflare is a direct upload from your machine. Pushing juicebox-view to GitHub
 deploys nothing; Cloudflare never builds from the repo. `deploy-dev.sh` checks out the ref and
-runs `npm ci`, then calls `scripts/deploy-page.sh`, which does two things:
+runs `npm ci`, then calls `scripts/deploy-page.sh`, which builds and uploads the page (below),
+writing `dist/version.json` (`{"version": "<branch or tag> (<short sha>)"}`) between the two, and
+then checks that the Worker's `/version` shows that version under `viewer`:
 
 ```bash
 # scripts/deploy-page.sh: build the page for the hosted relay
@@ -198,7 +200,7 @@ https://juicebox-view-dev.pages.dev/ serves within seconds. Every upload is kept
 Cloudflare dashboard (Pages → `juicebox-view-dev` → Deployments) can also roll back.
 
 To deploy your working copy as it is, uncommitted changes included, and the page only, call
-the inner script directly:
+the inner script directly (uncommitted changes mark the version `-dirty`, e.g. `main (9e1d2b7-dirty)`):
 
 ```bash
 cd /Users/turner/AidenLabDevelopment/juicebox-mcp
