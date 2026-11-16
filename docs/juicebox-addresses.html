@@ -177,7 +177,7 @@ h3 { font: 600 0.95rem var(--sans); margin: 2rem 0 0.25rem; }
     <tr><td class="addr"><a data-url="{mcp}/mcp"></a></td><td class="code">405</td>
       <td>The Connector address. Hosts POST to it; a browser’s GET is refused.</td></tr>
     <tr><td class="addr"><a data-url="{mcp}/version"></a></td><td class="code">200</td>
-      <td>What this Deployment runs: the Worker’s tag and commit, and the Page’s, read from its <code>version.json</code>. A page in a browser, JSON to <code>curl</code>. On 16 November 2026 only prod answered; dev and juicebot ran Workers from before <code>/version</code> and gave <code>404</code>.</td></tr>
+      <td>What this Deployment runs: the Worker’s tag and commit, and the Page’s, read from its <code>version.json</code>. A page in a browser, JSON to <code>curl</code>. On 16 November 2026 juicebot still ran a Worker from before <code>/version</code> and gave <code>404</code>.</td></tr>
     <tr><td class="addr"><a data-url="{mcp}/"></a></td><td class="code">404</td>
       <td>The server serves nothing else. The Page lives on its own host.</td></tr>
   </tbody>
